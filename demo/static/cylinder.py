@@ -70,7 +70,7 @@ class Cylinder(StaticHyperelasticity):
     
 
     # List of material models
-    def material_model(self):
+    def material_model(self, mesh):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
         mu       = 1e2

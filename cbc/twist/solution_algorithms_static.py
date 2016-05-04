@@ -65,8 +65,15 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         # First Piola-Kirchhoff stress tensor based on the material
         # model
         P  = problem.first_pk_stress(u)
-        # The variational form corresponding to hyperelasticity
-        L = inner(P, Grad(v))*dx - self.theta*inner(B, v)*dx
+        if isinstance(P, list):
+            P_list, cell_function = P
+            new_dx = Measure('dx')[cell_function]
+            L = -self.theta*inner(B, v)*new_dx
+            for (index, P) in enumerate(P_list):
+                L += inner(P, Grad(v))*new_dx(index)
+        else:
+            # The variational form corresponding to hyperelasticity
+            L = inner(P, Grad(v))*dx - self.theta*inner(B, v)*dx
         # Add contributions to the form from the Neumann boundary
         # conditions
 

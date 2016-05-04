@@ -1,42 +1,50 @@
-__author__ = "Harish Narayanan"
-__copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
-__license__  = "GNU GPL Version 3 or any later version"
+__author__ = "Marek Netusil"
 
 from cbc.twist import *
 from sys import argv
-""" DEMO - Twisting of a hyperelastic cube """
+
+""" DEMO - Hyperelastic cube is stretched/compressed by a traction acting on one side """
 
 class Twist(StaticHyperelasticity):
     """ Definition of the hyperelastic problem """
+
     def mesh(self):
-        n = 8
+        n = 10
         return UnitCubeMesh(n, n, n)
 
     # Setting up dirichlet conditions and boundaries
     def dirichlet_values(self):
         clamp = Expression(("0.0", "0.0", "0.0"))
-        twist = Expression(("0.0",
-                            "y0 + (x[1] - y0) * cos(theta) - (x[2] - z0) * sin(theta) - x[1]",
-                            "z0 + (x[1] - y0) * sin(theta) + (x[2] - z0) * cos(theta) - x[2]"),
-                           y0=0.5, z0=0.5, theta=pi/6)
-        return [clamp, twist]
+        return [clamp]
 
     def dirichlet_boundaries(self):
         left = "x[0] == 0.0"
-        right = "x[0] == 1.0"
-        return [left, right]
+        return [left]
 
+    # Setting up neumann conditions and boundaries
+    def neumann_conditions(self):
+        try:
+            traction = Constant((float(argv[1]),0.0,0.0))
+        except:
+            traction = Constant((200.0,0.0,0.0))
+        return [traction]
+
+    def neumann_boundaries(self):
+        right = "x[0] == 1.0"
+        return [right]
+    
 
     # List of material models
     def material_model(self, mesh):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
-        mu       = 3.8461
-        lmbda    = Expression("x[0]*5.8 + (1 - x[0])*5.7")
+        mu       = 1e2
+        lmbda    = 1e2
         C10 = 0.171; C01 = 4.89e-3; C20 = -2.4e-4; C30 = 5.e-4
         delka = 1.0/sqrt(2.0)
-        M = Constant((0.0,1.0,0.0))
-        k1 = 1e2; k2 = 1e1
+
+        M = Constant((1.0,0.0,0.0))
+        k1 = 1e3; k2 = 1e1
 
 
         materials = []
@@ -49,27 +57,31 @@ class Twist(StaticHyperelasticity):
         materials.append(GasserHolzapfelOgden({'mu':mu,'k1':k1,'k2':k2,'M':M,'bulk':lmbda}))
         materials.append(Ogden({'alpha1':1.3,'alpha2':5.0,'alpha3':-2.0,\
                                 'mu1':6.3e5,'mu2':0.012e5,'mu3':-0.1e5}))
-        
-        try:
-            index = int(argv[1])
-        except:
-            index = 2
-        print str(materials[index])
-        return materials[index]
+
+        subdomains = CellFunction('size_t', mesh)
+        subdomains.set_all(0)
+        right = AutoSubDomain(lambda x: x[0] >= .8)
+        middle = AutoSubDomain(lambda x: pow(x[0] - .5, 2) <= .01)
+        left = AutoSubDomain(lambda x: x[0] <= .2)
+        right.mark(subdomains, 1)
+        middle.mark(subdomains, 1)
+        left.mark(subdomains, 1)
+
+        material_list = [materials[2], materials[6]]
+
+        return (material_list, subdomains)
 
     def name_method(self, method):
         self.method = method
 
     def __str__(self):
-        return "A hyperelastic cube twisted by 30 degrees solved by " + self.method
+        return "A hyperelastic cube stretching/compression solved by " + self.method
 
 
 
 # Setup the problem
-
 twist = Twist()
 twist.name_method("DISPLACEMENT BASED FORMULATION")
-
 
 # Solve the problem
 print twist

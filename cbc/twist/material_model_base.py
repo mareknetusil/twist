@@ -31,11 +31,12 @@ class MaterialModel():
             # differently from those passed as DOLFIN objects
             # (expressions, functions and constant etc.)
             parameter_type = str(self.parameters[key].__class__)
-            if "dolfin" in parameter_type:
+            if ("dolfin" in parameter_type) or ("Expression" in parameter_type):
                 parameters[key] = self.parameters[key]
             else:
                 info("Converting given numerical parameter to DOLFIN Constant.")
                 parameters[key] = Constant(self.parameters[key])
+                
         return parameters
 
     def _construct_local_kinematics(self, u):
