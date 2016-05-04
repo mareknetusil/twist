@@ -1,9 +1,13 @@
 -*~
 -*.bin
 -*.orig
--*.pvd
--*.pyc
--*.pyo
--*.vtu
+*.pvd
+*.pyc
+*.pyo
+*.vtu
+*.swp
+*.xml
+*.xdmf
+*.h5
 -cbc/twist/sandbox/*
 -demo/twist/results*
