@@ -73,19 +73,27 @@ def create_dirichlet_conditions(values, boundaries, function_space):
         # Get current boundary
         boundary = boundaries[i]
 
-        # Case 0: boundary is a string
+        if isinstance(value, tuple):
+            subdim = value[1]
+            value = value[0]
+            temp_function_space = function_space.sub(subdim)
+        else:
+            temp_function_space = function_space
+
+        
+         # Case 0: boundary is a string
         if isinstance(boundary, str):
             boundary = CompiledSubDomain(boundary)
-            bc = DirichletBC(function_space, value, boundary)
+            bc = DirichletBC(temp_function_space, value, boundary)
 
         # Case 1: boundary is a SubDomain
         elif isinstance(boundary, SubDomain):
-            bc = DirichletBC(function_space, value, boundary)
+            bc = DirichletBC(temp_function_space, value, boundary)
 
         # Case 2: boundary is defined by a MeshFunction
         elif isinstance(boundary, tuple):
             mesh_function, index = boundary
-            bc = DirichletBC(function_space, value, mesh_function, index)
+            bc = DirichletBC(temp_function_space, value, mesh_function, index)
 
         # Unhandled case
         else:
