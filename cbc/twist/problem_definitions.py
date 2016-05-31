@@ -65,10 +65,13 @@ class StaticHyperelasticity(CBCProblem):
     def material_model(self):
         pass
 
-    def first_pk_stress(self, u):
+    def first_pk_stress(self, u, mesh = None):
         """Return the first Piola-Kirchhoff stress tensor, P, given a
         displacement field, u"""
-        material_model = self.material_model(u.function_space().mesh())
+        if mesh == None:
+            mesh = u.function_space().mesh()
+        
+        material_model = self.material_model(mesh)
         if isinstance(material_model, tuple):
             fpk_list = []
             material_list, cell_function = material_model

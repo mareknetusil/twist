@@ -5,10 +5,67 @@ __license__  = "GNU GPL Version 3 or any later version"
 from dolfin import *
 
 # Renaming grad to Grad because it looks nicer in the reference
-# configuration
+# configuration 
+
 from ufl import grad as ufl_grad
+def metric_tensor(u,i):
+    chi = SpatialCoordinate(u.domain())
+    if i == 'up':
+        h = as_vector([1.0, 1.0/(chi[0] + u[0]), 1.0])
+    elif i == 'down':
+        h = as_vector([1.0, chi[0] + u[0], 1.0])
+
+    return as_matrix([[h[0]*h[0],0.0,0.0], [0.0,h[1]*h[1],0.0], [0.0,0.0,h[2]*h[2]]])
+
+def Metric_Tensor(u,i):
+    chi = SpatialCoordinate(u.domain())
+    if i == 'up':
+        H = as_vector([1.0,1.0/chi[0],1.0])
+    elif i == 'down':
+        H = as_vector([1.0,chi[0],1.0])
+
+    return as_matrix([[H[0]*H[0],0.0,0.0], [0.0,H[1]*H[1],0.0], [0.0,0.0,H[2]*H[2]]])
+    
+
+def Grad_Cyl(u, v):
+    chi = SpatialCoordinate(u.domain())    
+
+    a00 = Dx(v[0],0) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],0)
+    a01 = Dx(v[0],1) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],1)
+    a02 = Dx(v[0],2) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],2)
+
+    a10 = Dx(v[1],0) + (chi[0]+u[0])*v[0]*Dx(chi[1]+u[1],0) - v[1]/(chi[0]+u[0])*Dx(chi[0]+u[0],0)
+    a11 = Dx(v[1],1) + (chi[0]+u[0])*v[0]*Dx(chi[1]+u[1],1) - v[1]/(chi[0]+u[0])*Dx(chi[0]+u[0],1)
+    a12 = Dx(v[1],2) + (chi[0]+u[0])*v[0]*Dx(chi[1]+u[1],2) - v[1]/(chi[0]+u[0])*Dx(chi[0]+u[0],2)
+
+    a20 = Dx(v[2],0)
+    a21 = Dx(v[2],1)
+    a22 = Dx(v[2],2)
+
+    return as_tensor([[a00,a01,a02],[a10,a11,a12],[a20,a21,a22]])
+
+
+def Grad_U(u):
+    chi = SpatialCoordinate(u.domain())
+
+    a00 = Dx(u[0],0)
+    a01 = Dx(u[0],1) - chi[0]*u[1]
+    a02 = Dx(u[0],2)
+    
+    a10 = Dx(u[1],0) + 1/chi[0]*u[1]
+    a11 = Dx(u[1],1) + 1/chi[0]*u[0]
+    a12 = Dx(u[1],2)
+
+    a20 = Dx(u[2],0)
+    a21 = Dx(u[2],1)
+    a22 = Dx(u[2],2)
+
+    return as_tensor([[a00,a01,a02],[a10,a11,a12],[a20,a21,a22]])
+
+
+
 def Grad(v):
-        return ufl_grad(v)
+    return ufl_grad(v) 
 
 # Infinitesimal strain tensor
 def InfinitesimalStrain(u):
@@ -25,13 +82,18 @@ def DeformationGradient(u):
 
 # Determinant of the deformation gradient
 def Jacobian(u):
+    G = det(Metric_Tensor(u,'up'))
+    g = det(metric_tensor(u,'down'))
     F = DeformationGradient(u)
-    return variable(det(F))
+    return variable(g*G*det(F))
 
 # Right Cauchy-Green tensor
 def RightCauchyGreen(u):
-    F = DeformationGradient(u)
-    return variable(F.T*F)
+    Gu = Metric_Tensor(u,'up')
+    Gd = Metric_Tensor(u,'down')
+    I = SecondOrderIdentity(u)
+    
+    return variable(I + Grad_U(u) + Gu*(Grad_U(u).T)*Gd + Gu*(Grad_U(u).T)*Gd*Grad_U(u))
 
 # Green-Lagrange strain tensor
 def GreenLagrangeStrain(u):

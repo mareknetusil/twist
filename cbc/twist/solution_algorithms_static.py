@@ -9,7 +9,7 @@ from dolfin import *
 from nonlinear_solver import *
 from cbc.common import *
 from cbc.common.utils import *
-from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian
+from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian, Grad_Cyl, metric_tensor, Metric_Tensor
 from sys import exit
 from numpy import array, loadtxt, linalg
 
@@ -64,16 +64,19 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         self.theta = Constant(1.0)
         # First Piola-Kirchhoff stress tensor based on the material
         # model
+        chi = SpatialCoordinate(u.domain())
+        #g = metric_tensor(u)
+        G = Metric_Tensor(u,'up')
         P  = problem.first_pk_stress(u)
         if isinstance(P, list):
             P_list, cell_function = P
             new_dx = Measure('dx')[cell_function]
-            L = -self.theta*inner(B, v)*new_dx
+            L = -self.theta*inner(B, v)*chi[0]*new_dx
             for (index, P) in enumerate(P_list):
-                L += inner(P, Grad(v))*new_dx(index)
+                L += inner(P*G, Grad_Cyl(u,v))*chi[0]*new_dx(index)
         else:
             # The variational form corresponding to hyperelasticity
-            L = inner(P, Grad(v))*dx - self.theta*inner(B, v)*dx
+            L = inner(P*G, Grad_Cyl(u,v))*chi[0]*dx - self.theta*inner(B, v)*chi[0]*dx
         # Add contributions to the form from the Neumann boundary
         # conditions
 
@@ -95,7 +98,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         for (i, neumann_boundary) in enumerate(neumann_boundaries):
             compiled_boundary = CompiledSubDomain(neumann_boundary) 
             compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*dsb(i)
+            L = L - self.theta*inner(neumann_conditions[i], v)*chi[0]*dsb(i)
 
 
         a = derivative(L, u, du)
@@ -323,15 +326,33 @@ class StaticMomentumBalanceSolver_Incompressible(CBCSolver):
 
         # First Piola-Kirchhoff stress tensor based on the material
         # model
-        P  = problem.first_pk_stress(u)
+
+        #TODO: DOOPRAVIT A DODELAT TADY TY CYLINDRICKY SOURADNICE.
+        # !!!! NENI FUNKCNI !!!!
+    
+        
+        self.theta = Constant(1.0)
+        G = Metric_Tensor(u,"up")
+        g = metric_tensor(u,"up")
+        chi = SpatialCoordinate(u.domain())
+
+        P  = problem.first_pk_stress(u,w.function_space().mesh())
         J = Jacobian(u)
         F = DeformationGradient(u)
-        material_parameters = problem.material_model().parameters
+
+        if isinstance(P, list):
+            P_list, cell_function = P
+            new_dx = Measure('dx')[cell_function]
+            L1 = - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*new_dx - self.theta*inner(B, v)*chi[0]*new_dx
+            for (index, P) in enumerate(P_list):
+                L1 += inner(P*G, Grad_Cyl(u,v))*chi[0]*new_dx(index)
+        else:
+            # The variational form corresponding to hyperelasticity
+            L1 = inner(P*G, Grad_Cyl(u,v))*chi[0]*dx - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*dx - self.theta*inner(B, v)*chi[0]*dx
 
         # The variational form corresponding to hyperelasticity
-        self.theta = Constant(1.0)
-        L1 = inner(P, Grad(v))*dx - p*J*inner(inv(F.T),Grad(v))*dx - self.theta*inner(B, v)*dx
-        L2 = (J - 1.0)*q*dx
+
+        L2 = (J - 1.0)*q*chi[0]*dx
         L = L1 + L2
 
         # Add contributions to the form from the Neumann boundary
@@ -353,7 +374,7 @@ class StaticMomentumBalanceSolver_Incompressible(CBCSolver):
         for (i, neumann_boundary) in enumerate(neumann_boundaries):
             compiled_boundary = CompiledSubDomain(neumann_boundary)
             compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*dsb(i)
+            L = L - self.theta*inner(neumann_conditions[i], v)*chi[0]*dsb(i)
 
         a = derivative(L, w, dw)
 

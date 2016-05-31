@@ -70,7 +70,7 @@ class MaterialModel():
             S = 2*diff(psi, C)
         elif self.kinematic_measure ==  "GreenLagrangeStrain":
             E = self.E
-            S = diff(psi, E)
+            S = Metric_Tensor(u,'up')*diff(psi, E)*Metric_Tensor(u,'down')
         elif self.kinematic_measure == "CauchyGreenInvariants":
             I = self.I; C = self.C
             I1 = self.I1; I2 = self.I2; I3 = self.I3
