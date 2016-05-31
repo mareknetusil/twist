@@ -51,19 +51,50 @@ class AugmentedNewtonSolver():
 
         # Solver with adaptive relaxation parameter
         # FIXME: Replace this homemade solver with an overloaded NonlinearVariationalSolver
-        if relaxation["adaptive"]:          
-            if not self.load_increment or n == 1:
-                # Solve the problem with full loading
-                self.adaptive()
+        if relaxation["adaptive"]:
+
+
+            if has_petsc():
+
+                problem = NonlinearVariationalProblem(self.F, self.u, self.bc, self.a)
+                solver = NonlinearVariationalSolver(problem)
+
+                prm = solver.parameters
+
+                prm["nonlinear_solver"] = "snes"
+                prm["snes_solver"]["method"] = "newtonls"
+                prm["snes_solver"]["absolute_tolerance"] = self.parameters["absolute_tolerance"]
+                prm["snes_solver"]["relative_tolerance"] = self.parameters["relative_tolerance"]
+                prm["snes_solver"]["maximum_iterations"] = self.parameters["maximum_iterations"]
+                prm["snes_solver"]["linear_solver"] = "lu"
+                prm["snes_solver"]["line_search"] = "bt"
+
+                if not self.load_increment or n == 1:
+                    solver.solve()
+                else:
+                    # Incremental loading implementation
+                    dtheta = 1.0/n              # define the increment
+                    # Solve the problem for the incremental coefficient ranging from 0.0 to 1.0
+                    for i in range(n+1):
+                        self.load_increment.assign(i*dtheta)
+                        # FIXME: choose some log level for this output
+                        print 'theta = ', float(self.load_increment)
+                        solver.solve()
+
             else:
-                # Incremental loading implementation
-                dtheta = 1.0/n              # define the increment
-                # Solve the problem for the incremental coefficient ranging from 0.0 to 1.0
-                for i in range(n+1):            
-                    self.load_increment.assign(i*dtheta)
-                    # FIXME: choose some log level for this output
-                    print 'theta = ', float(self.load_increment)
+
+                if not self.load_increment or n == 1:
+                    # Solve the problem with full loading
                     self.adaptive()
+                else:
+                    # Incremental loading implementation
+                    dtheta = 1.0/n              # define the increment
+                    # Solve the problem for the incremental coefficient ranging from 0.0 to 1.0
+                    for i in range(n+1):            
+                        self.load_increment.assign(i*dtheta)
+                        # FIXME: choose some log level for this output
+                        print 'theta = ', float(self.load_increment)
+                        self.adaptive()
 
         # Non-adaptive case - solve each load increment with the NonlinearVariationalSolver
         else:
