@@ -10,8 +10,8 @@ def default_solver_parameters():
 
     p = Parameters("solver_parameters")
     p.add("maximum_iterations", 50)
-    p.add("absolute_tolerance", 1E-8)
-    p.add("relative_tolerance", 1E-7)
+    p.add("absolute_tolerance", 1E-12)
+    p.add("relative_tolerance", 1E-8)
     p.add("loading_number_of_steps", 1) # if >1 => incremental loading used
     # Relaxation parameter setup - subparameter of solver_parameters
     rel = Parameters("relaxation_parameter")

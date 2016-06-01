@@ -62,6 +62,10 @@ class StaticHyperelasticity(CBCProblem):
         """Return boundaries over which Neumann conditions act"""
         return []
 
+    def periodic_boundaries(self):
+        """ Return periodic boundaries """
+        return []
+
     def material_model(self):
         pass
 

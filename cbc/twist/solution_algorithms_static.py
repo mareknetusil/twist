@@ -39,7 +39,13 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         mesh = problem.mesh()
 
         # Define function spaces
-        vector = VectorFunctionSpace(mesh, "CG", parameters['element_degree'])
+        element_degree = parameters['element_degree']
+        pbc = problem.periodic_boundaries()
+        if pbc == []:
+            vector = VectorFunctionSpace(mesh, "CG", element_degree)
+        else:
+            vector = VectorFunctionSpace(mesh, "CG", element_degree, constrained_domain = pbc)
+
         # Print DOFs
         print "Number of DOFs = %d" % vector.dim()
 
@@ -167,8 +173,14 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
 
         # Define function spaces
         element_degree = parameters["element_degree"]
-        vector = VectorFunctionSpace(mesh, "CG", element_degree)
-        scalar = FunctionSpace(mesh,'CG', element_degree - 1)
+
+        pbc = problem.periodic_boundaries()
+        if pbc == []:
+            vector = VectorFunctionSpace(mesh, "CG", element_degree)
+            scalar = FunctionSpace(mesh,'CG', element_degree - 1)
+        else:
+            vector = VectorFunctionSpace(mesh, "CG", element_degree, constrained_domain = pbc)
+            scalar = FunctionSpace(mesh,'CG', element_degree - 1, constrained_domain = pbc)
         mixed_space = MixedFunctionSpace([vector,scalar])
 
         # Print DOFs
@@ -298,8 +310,15 @@ class StaticMomentumBalanceSolver_Incompressible(CBCSolver):
 
         # Define function spaces
         element_degree = parameters["element_degree"]
-        vector = VectorFunctionSpace(mesh, "CG", element_degree)
-        scalar = FunctionSpace(mesh,'CG', element_degree - 1)
+        
+        pbc = problem.periodic_boundaries()
+        if pbc == []:
+            vector = VectorFunctionSpace(mesh, "CG", element_degree)
+            scalar = FunctionSpace(mesh,'CG', element_degree - 1)
+        else:
+            vector = VectorFunctionSpace(mesh, "CG", element_degree, constrained_domain = pbc)
+            scalar = FunctionSpace(mesh,'CG', element_degree - 1, constrained_domain = pbc)
+
         mixed_space = MixedFunctionSpace([vector,scalar])
 
         # Print DOFs
