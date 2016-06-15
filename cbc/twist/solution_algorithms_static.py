@@ -9,7 +9,8 @@ from dolfin import *
 from nonlinear_solver import *
 from cbc.common import *
 from cbc.common.utils import *
-from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian, Grad_Cyl, metric_tensor, Metric_Tensor
+from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian, Grad_Cyl
+from cbc.twist.coordinate_system import CartesianSystem
 from sys import exit
 from numpy import array, loadtxt, linalg
 
@@ -70,19 +71,22 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         self.theta = Constant(1.0)
         # First Piola-Kirchhoff stress tensor based on the material
         # model
-        chi = SpatialCoordinate(u.domain())
-        #g = metric_tensor(u)
-        G = Metric_Tensor(u,'up')
-        P  = problem.first_pk_stress(u)
+
+        coordinate_system = CartesianSystem(mesh = mesh, displacement = u)
+
+        G_raise = coordinate_system.metric_tensor('raise')
+        jacobian = coordinate_system.volume_jacobian()
+
+        P  = problem.first_pk_stress(u, coordinate_system)
         if isinstance(P, tuple):
             P_list, cell_function = P
             new_dx = Measure('dx')[cell_function]
-            L = -self.theta*inner(B, v)*chi[0]*new_dx
+            L = -self.theta*inner(B, v)*jacobian*new_dx
             for (index, P) in enumerate(P_list):
-                L += inner(P*G, Grad_Cyl(u,v))*chi[0]*new_dx(index)
+                L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*new_dx(index)
         else:
             # The variational form corresponding to hyperelasticity
-            L = inner(P*G, Grad_Cyl(u,v))*chi[0]*dx - self.theta*inner(B, v)*chi[0]*dx
+            L = inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*dx - self.theta*inner(B, v)*jacobian*dx
         # Add contributions to the form from the Neumann boundary
         # conditions
 
@@ -104,7 +108,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         for (i, neumann_boundary) in enumerate(neumann_boundaries):
             compiled_boundary = CompiledSubDomain(neumann_boundary) 
             compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*chi[0]*dsb(i)
+            L = L - self.theta*inner(neumann_conditions[i], v)*dsb(i)
 
 
         a = derivative(L, u, du)

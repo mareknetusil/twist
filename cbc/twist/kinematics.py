@@ -3,6 +3,7 @@ __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __autho
 __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
+from cbc.twist.coordinate_system import CartesianSystem
 
 # Renaming grad to Grad because it looks nicer in the reference
 # configuration 
@@ -25,10 +26,27 @@ def Metric_Tensor(u,i):
         H = as_vector([1.0,chi[0],1.0])
 
     return as_matrix([[H[0]*H[0],0.0,0.0], [0.0,H[1]*H[1],0.0], [0.0,0.0,H[2]*H[2]]])
+
+
+
+
+# Deformation gradient
+def DeformationGradient(u):
+    I = SecondOrderIdentity(u)
+    return variable(I + Grad(u))
     
 
-def Grad_Cyl(u, v):
-    chi = SpatialCoordinate(u.domain())    
+def Grad_Cyl(v, coordinate_system = CartesianSystem()):
+
+    u = coordinate_system.displacement
+    F = DeformationGradient(u)
+    
+    i, j, k, I = indices(4)
+    gamma = coordinate_system.christoffel_symbols()
+    v_iI = Dx(v[i],I) - v[k]*gamma[k,i,j]*F[j,I]
+
+    """
+    chi = SpatialCoordinate(u.domain())
 
     a00 = Dx(v[0],0) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],0)
     a01 = Dx(v[0],1) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],1)
@@ -42,10 +60,24 @@ def Grad_Cyl(u, v):
     a21 = Dx(v[2],1)
     a22 = Dx(v[2],2)
 
+
     return as_tensor([[a00,a01,a02],[a10,a11,a12],[a20,a21,a22]])
+    """
+
+    return as_tensor(v_iI, (i, I))
 
 
-def Grad_U(u):
+def Grad_U(u, coordinate_system = CartesianSystem()):
+
+    I, J, K = indices(3)
+    Gamma = coordinate_system.christoffel_symbols()
+
+    u_IJ = Dx(u[I],J) + Gamma[I,J,K]*u[K]
+
+    return as_tensor(u_IJ, (I, J))
+
+
+    """
     chi = SpatialCoordinate(u.domain())
 
     a00 = Dx(u[0],0)
@@ -61,7 +93,7 @@ def Grad_U(u):
     a22 = Dx(u[2],2)
 
     return as_tensor([[a00,a01,a02],[a10,a11,a12],[a20,a21,a22]])
-
+    """
 
 
 def Grad(v):
@@ -75,30 +107,48 @@ def InfinitesimalStrain(u):
 def SecondOrderIdentity(u):
     return variable(Identity(u.cell().geometric_dimension()))
 
-# Deformation gradient
-def DeformationGradient(u):
-    I = SecondOrderIdentity(u)
-    return variable(I + Grad(u))
 
 # Determinant of the deformation gradient
-def Jacobian(u):
+def Jacobian(u, coordinate_system = CartesianSystem()):
+    G = coordinate_system.metric_tensor('raise')
+    g = coordinate_system.metric_tensor('lower', deformed = True)
+    u = coordinate_system.displacement
+    F = DeformationGradient(u)
+
+    #TODO: Should it be sqrt(det(g)*det(G))?
+    return variable(det(g)*det(G)*det(F))
+
+
+    """
     G = det(Metric_Tensor(u,'up'))
     g = det(metric_tensor(u,'down'))
     F = DeformationGradient(u)
     return variable(g*G*det(F))
+    """
 
 # Right Cauchy-Green tensor
-def RightCauchyGreen(u):
+def RightCauchyGreen(u, coordinate_system = CartesianSystem()):
+
+    G_raise = coordinate_system.metric_tensor('raise')
+    G_lower = coordinate_system.metric_tensor('lower')
+    I = SecondOrderIdentity(u)
+    gradu = Grad_U(u, coordinate_system)
+
+    return variable(I + gradu + G_raise*gradu.T*G_lower + (G_raise*gradu.T*G_lower)*gradu)
+    
+
+    """
     Gu = Metric_Tensor(u,'up')
     Gd = Metric_Tensor(u,'down')
     I = SecondOrderIdentity(u)
     
     return variable(I + Grad_U(u) + Gu*(Grad_U(u).T)*Gd + Gu*(Grad_U(u).T)*Gd*Grad_U(u))
+    """
 
 # Green-Lagrange strain tensor
-def GreenLagrangeStrain(u):
+def GreenLagrangeStrain(u, coordinate_system):
     I = SecondOrderIdentity(u)
-    C = RightCauchyGreen(u)
+    C = RightCauchyGreen(u, coordinate_system)
     return variable(0.5*(C - I))
 
 # Left Cauchy-Green tensor
@@ -120,27 +170,27 @@ def Invariants(A):
     return [I1, I2, I3]
 
 # Invariants of the (right/left) Cauchy-Green tensor
-def CauchyGreenInvariants(u):
-    C = RightCauchyGreen(u)
+def CauchyGreenInvariants(u, coordinate_system):
+    C = RightCauchyGreen(u, coordinate_system)
     [I1, I2, I3] = Invariants(C)
     return [variable(I1), variable(I2), variable(I3)]
 
 # Isochoric part of the deformation gradient
-def IsochoricDeformationGradient(u):
+def IsochoricDeformationGradient(u, coordinate_system):
     F = DeformationGradient(u)
-    J = Jacobian(u)
+    J = Jacobian(u, coordinate_system)
     return variable(J**(-1.0/3.0)*F)
 
 # Isochoric part of the right Cauchy-Green tensor
-def IsochoricRightCauchyGreen(u):
-    C = RightCauchyGreen(u)
-    J = Jacobian(u)
+def IsochoricRightCauchyGreen(u, coordinate_system):
+    C = RightCauchyGreen(u, coordinate_system)
+    J = Jacobian(u, coordinate_system)
     return variable(J**(-2.0/3.0)*C)
 
 # Invariants of the ischoric part of the (right/left) Cauchy-Green
 # tensor. Note that I3bar = 1 by definition.
-def IsochoricCauchyGreenInvariants(u):
-    Cbar = IsochoricRightCauchyGreen(u)
+def IsochoricCauchyGreenInvariants(u, coordinate_system):
+    Cbar = IsochoricRightCauchyGreen(u, coordinate_system)
     [I1bar, I2bar, I3bar] = Invariants(Cbar)
     return [variable(I1bar), variable(I2bar)]
 

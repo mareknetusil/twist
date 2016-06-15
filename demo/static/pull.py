@@ -78,4 +78,4 @@ twist.name_method("DISPLACEMENT BASED FORMULATION")
 
 # Solve the problem
 print twist
-twist.solve()
+u = twist.solve()

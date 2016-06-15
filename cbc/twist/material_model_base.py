@@ -4,6 +4,7 @@ __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
 from cbc.twist.kinematics import *
+from cbc.twist.coordinate_system import CartesianSystem
 from sys import exit
 
 class MaterialModel():
@@ -39,18 +40,18 @@ class MaterialModel():
                 
         return parameters
 
-    def _construct_local_kinematics(self, u):
+    def _construct_local_kinematics(self, u, coordinate_system = CartesianSystem()):
         self.I = SecondOrderIdentity(u)
         self.epsilon = InfinitesimalStrain(u)
         self.F = DeformationGradient(u)
-        self.J = Jacobian(u)
-        self.C = RightCauchyGreen(u)
-        self.Cbar = IsochoricRightCauchyGreen(u)
-        self.E = GreenLagrangeStrain(u)
+        self.J = Jacobian(u, coordinate_system)
+        self.C = RightCauchyGreen(u, coordinate_system)
+        self.Cbar = IsochoricRightCauchyGreen(u, coordinate_system)
+        self.E = GreenLagrangeStrain(u, coordinate_system)
         self.b = LeftCauchyGreen(u)
         self.e = EulerAlmansiStrain(u)
-        [self.I1, self.I2, self.I3] = CauchyGreenInvariants(u)
-        [self.I1bar, self.I2bar] = IsochoricCauchyGreenInvariants(u)
+        [self.I1, self.I2, self.I3] = CauchyGreenInvariants(u, coordinate_system)
+        [self.I1bar, self.I2bar] = IsochoricCauchyGreenInvariants(u, coordinate_system)
 
         # This breaks CBC.Swing
         #[self.l1, self.l2, self.l3] = PrincipalStretches(u)
@@ -58,8 +59,11 @@ class MaterialModel():
     def strain_energy(self, parameters):
         pass
 
-    def SecondPiolaKirchhoffStress(self, u):
-        self._construct_local_kinematics(u)
+    def SecondPiolaKirchhoffStress(self, u, coordinate_system = CartesianSystem()):
+        self._construct_local_kinematics(u, coordinate_system)
+        G_raise = coordinate_system.metric_tensor('raise')
+        G_lower = coordinate_system.metric_tensor('lower')
+
         psi = self.strain_energy(MaterialModel._parameters_as_functions(self, u))
 
         if self.kinematic_measure == "InfinitesimalStrain":
@@ -70,7 +74,7 @@ class MaterialModel():
             S = 2*diff(psi, C)
         elif self.kinematic_measure ==  "GreenLagrangeStrain":
             E = self.E
-            S = Metric_Tensor(u,'up')*diff(psi, E)*Metric_Tensor(u,'down')
+            S = G_raise*diff(psi, E)*G_lower
         elif self.kinematic_measure == "CauchyGreenInvariants":
             I = self.I; C = self.C
             I1 = self.I1; I2 = self.I2; I3 = self.I3
@@ -91,8 +95,8 @@ class MaterialModel():
             S = 1.0/l1*diff(psi, l1) + 1.0/l2*diff(psi, l2) + 1.0/l3*diff(psi, l3)
         return S
 
-    def FirstPiolaKirchhoffStress(self, u):
-        S = self.SecondPiolaKirchhoffStress(u)
+    def FirstPiolaKirchhoffStress(self, u, coordinate_system = CartesianSystem()):
+        S = self.SecondPiolaKirchhoffStress(u, coordinate_system)
         F = self.F
         P = F*S
 

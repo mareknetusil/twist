@@ -8,6 +8,7 @@ from cbc.twist.solution_algorithms_static import StaticMomentumBalanceSolver_U, 
 from cbc.twist.solution_algorithms_dynamic import  MomentumBalanceSolver, CG1MomentumBalanceSolver
 from cbc.twist.solution_algorithms_static import default_parameters as solver_parameters
 from cbc.twist.kinematics import GreenLagrangeStrain
+from cbc.twist.coordinate_system import CartesianSystem
 from sys import exit
 
 class StaticHyperelasticity(CBCProblem):
@@ -69,9 +70,10 @@ class StaticHyperelasticity(CBCProblem):
     def material_model(self):
         pass
 
-    def first_pk_stress(self, u, mesh = None):
+    def first_pk_stress(self, u, coordinate_system = CartesianSystem()):
         """Return the first Piola-Kirchhoff stress tensor, P, given a
         displacement field, u"""
+        mesh = coordinate_system.mesh
         if mesh == None:
             mesh = u.function_space().mesh()
         
@@ -80,15 +82,15 @@ class StaticHyperelasticity(CBCProblem):
             fpk_list = []
             material_list, cell_function = material_model
             for material in material_list:
-                fpk_list.append(material.FirstPiolaKirchhoffStress(u))
+                fpk_list.append(material.FirstPiolaKirchhoffStress(u, coordinate_system))
             return (fpk_list, cell_function)
         else:
-            return material_model.FirstPiolaKirchhoffStress(u)
+            return material_model.FirstPiolaKirchhoffStress(u, coordinate_system)
 
     def second_pk_stress(self, u):
         """Return the second Piola-Kirchhoff stress tensor, S, given a
         displacement field, u"""
-        return self.material_model().SecondPiolaKirchhoffStress(u)
+        return self.material_model().SecondPiolaKirchhoffStress(u, coordinate_system)
 
     def strain_energy(self, u):
         """Return the strain (potential) energy given a displacement
