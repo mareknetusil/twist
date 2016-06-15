@@ -74,7 +74,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         #g = metric_tensor(u)
         G = Metric_Tensor(u,'up')
         P  = problem.first_pk_stress(u)
-        if isinstance(P, list):
+        if isinstance(P, tuple):
             P_list, cell_function = P
             new_dx = Measure('dx')[cell_function]
             L = -self.theta*inner(B, v)*chi[0]*new_dx
@@ -207,17 +207,33 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
 
         # First Piola-Kirchhoff stress tensor based on the material
         # model
-        P  = problem.first_pk_stress(u)
+        self.theta = Constant(1.0)
+        G = Metric_Tensor(u,"up")
+        g = metric_tensor(u,"up")
+        chi = SpatialCoordinate(u.domain())
+
+        P  = problem.first_pk_stress(u,w.function_space().mesh())
         J = Jacobian(u)
         F = DeformationGradient(u)
-        material_parameters = problem.material_model().parameters
-        lb = material_parameters['bulk']
 
-        self.theta = Constant(1.0)
-        # The variational form corresponding to hyperelasticity
-        L1 = inner(P, Grad(v))*dx - p*J*inner(inv(F.T),Grad(v))*dx - self.theta*inner(B, v)*dx
-        L2 = (1.0/lb*p + J - 1.0)*q*dx
-        L = L1 + L2
+        if isinstance(P, tuple):
+            P_list, cell_function = P
+            material_list = problem.material_model(w.function_space().mesh())[0]
+            new_dx = Measure('dx')[cell_function]
+            L = - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*new_dx - self.theta*inner(B, v)*chi[0]*new_dx
+            for (index, P) in enumerate(P_list):
+                L += inner(P*G, Grad_Cyl(u,v))*chi[0]*new_dx(index)
+
+
+                material_parameters = material_list[index].parameters
+                lb = material_parameters['bulk']
+                L += (1.0/lb*p + J - 1.0)*q*chi[0]*new_dx(index)
+        else:
+            # The variational form corresponding to hyperelasticity
+            L = inner(P*G, Grad_Cyl(u,v))*chi[0]*dx - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*dx - self.theta*inner(B, v)*chi[0]*dx
+
+            L += (1.0/lb*p + J - 1.0)*q*chi[0]*dx
+
 
         # Add contributions to the form from the Neumann boundary
         # conditions
@@ -238,7 +254,7 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
         for (i, neumann_boundary) in enumerate(neumann_boundaries):
             compiled_boundary = CompiledSubDomain(neumann_boundary)
             compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*dsb(i)
+            L = L - self.theta*inner(neumann_conditions[i], v)*chi[0]*dsb(i)
 
 
         a = derivative(L, w, dw)
@@ -359,7 +375,7 @@ class StaticMomentumBalanceSolver_Incompressible(CBCSolver):
         J = Jacobian(u)
         F = DeformationGradient(u)
 
-        if isinstance(P, list):
+        if isinstance(P, tuple):
             P_list, cell_function = P
             new_dx = Measure('dx')[cell_function]
             L1 = - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*new_dx - self.theta*inner(B, v)*chi[0]*new_dx

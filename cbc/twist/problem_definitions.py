@@ -81,7 +81,7 @@ class StaticHyperelasticity(CBCProblem):
             material_list, cell_function = material_model
             for material in material_list:
                 fpk_list.append(material.FirstPiolaKirchhoffStress(u))
-            return [fpk_list, cell_function]
+            return (fpk_list, cell_function)
         else:
             return material_model.FirstPiolaKirchhoffStress(u)
 
