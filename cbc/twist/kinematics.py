@@ -9,24 +9,6 @@ from cbc.twist.coordinate_system import CartesianSystem
 # configuration 
 
 from ufl import grad as ufl_grad
-def metric_tensor(u,i):
-    chi = SpatialCoordinate(u.domain())
-    if i == 'up':
-        h = as_vector([1.0, 1.0/(chi[0] + u[0]), 1.0])
-    elif i == 'down':
-        h = as_vector([1.0, chi[0] + u[0], 1.0])
-
-    return as_matrix([[h[0]*h[0],0.0,0.0], [0.0,h[1]*h[1],0.0], [0.0,0.0,h[2]*h[2]]])
-
-def Metric_Tensor(u,i):
-    chi = SpatialCoordinate(u.domain())
-    if i == 'up':
-        H = as_vector([1.0,1.0/chi[0],1.0])
-    elif i == 'down':
-        H = as_vector([1.0,chi[0],1.0])
-
-    return as_matrix([[H[0]*H[0],0.0,0.0], [0.0,H[1]*H[1],0.0], [0.0,0.0,H[2]*H[2]]])
-
 
 
 
@@ -37,15 +19,17 @@ def DeformationGradient(u):
     
 
 def Grad_Cyl(v, coordinate_system = CartesianSystem()):
-
+    
     u = coordinate_system.displacement
     F = DeformationGradient(u)
     
     i, j, k, I = indices(4)
-    gamma = coordinate_system.christoffel_symbols()
+    gamma = coordinate_system.christoffel_symbols(deformed = True)
     v_iI = Dx(v[i],I) - v[k]*gamma[k,i,j]*F[j,I]
 
+    return as_tensor(v_iI, (i, I))
     """
+    u = coordinate_system.displacement
     chi = SpatialCoordinate(u.domain())
 
     a00 = Dx(v[0],0) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],0)
@@ -62,13 +46,12 @@ def Grad_Cyl(v, coordinate_system = CartesianSystem()):
 
 
     return as_tensor([[a00,a01,a02],[a10,a11,a12],[a20,a21,a22]])
-    """
-
-    return as_tensor(v_iI, (i, I))
+    """  
 
 
 def Grad_U(u, coordinate_system = CartesianSystem()):
-
+    #TODO: Something wrong with this!
+    
     I, J, K = indices(3)
     Gamma = coordinate_system.christoffel_symbols()
 
@@ -93,7 +76,7 @@ def Grad_U(u, coordinate_system = CartesianSystem()):
     a22 = Dx(u[2],2)
 
     return as_tensor([[a00,a01,a02],[a10,a11,a12],[a20,a21,a22]])
-    """
+    """ 
 
 
 def Grad(v):
@@ -116,7 +99,7 @@ def Jacobian(u, coordinate_system = CartesianSystem()):
     F = DeformationGradient(u)
 
     #TODO: Should it be sqrt(det(g)*det(G))?
-    return variable(det(g)*det(G)*det(F))
+    return variable(sqrt(det(g)*det(G))*det(F))
 
 
     """

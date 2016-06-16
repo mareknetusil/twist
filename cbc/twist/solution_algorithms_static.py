@@ -10,7 +10,7 @@ from nonlinear_solver import *
 from cbc.common import *
 from cbc.common.utils import *
 from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian, Grad_Cyl
-from cbc.twist.coordinate_system import CartesianSystem
+from cbc.twist.coordinate_system import *
 from sys import exit
 from numpy import array, loadtxt, linalg
 
@@ -72,7 +72,8 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         # First Piola-Kirchhoff stress tensor based on the material
         # model
 
-        coordinate_system = CartesianSystem(mesh = mesh, displacement = u)
+        #coordinate_system = CartesianSystem(mesh = mesh, displacement = u)
+        coordinate_system = CylindricalSystem(mesh = mesh, displacement = u)
 
         G_raise = coordinate_system.metric_tensor('raise')
         jacobian = coordinate_system.volume_jacobian()
@@ -108,7 +109,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         for (i, neumann_boundary) in enumerate(neumann_boundaries):
             compiled_boundary = CompiledSubDomain(neumann_boundary) 
             compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*dsb(i)
+            L = L - self.theta*inner(neumann_conditions[i], v)*jacobian*dsb(i)
 
 
         a = derivative(L, u, du)
