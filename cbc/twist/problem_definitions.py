@@ -31,8 +31,6 @@ class StaticHyperelasticity(CBCProblem):
             self.solver = StaticMomentumBalanceSolver_U(self, self.parameters["solver_parameters"])
         elif formulation == 'mixed_up':
             self.solver = StaticMomentumBalanceSolver_UP(self, self.parameters['solver_parameters'])
-        elif formulation == 'incompressible':
-            self.solver = StaticMomentumBalanceSolver_Incompressible(self, self.parameters['solver_parameters'])
 
         # Call solver
         return self.solver.solve()

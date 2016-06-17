@@ -7,6 +7,7 @@ __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
 from nonlinear_solver import *
+from solution_algorithms_blocks import *
 from cbc.common import *
 from cbc.common.utils import *
 from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian, Grad_Cyl
@@ -22,18 +23,18 @@ def default_parameters():
     p.add("store_solution_data", False)
     p.add("element_degree",2)
     p.add("problem_formulation",'displacement')
-    rel = Parameters("relaxation_parameter")
-    rel.add("value", 1.0)
-    rel.add("adaptive", True)
-    p.add(rel)
-    p.add("loading_number_of_steps", 1)
+    new = Parameters("newton_solver")
+    new.add("value", 1.0)
+    new.add("adaptive", True)
+    new.add("loading_number_of_steps", 1)
+    p.add(new)
 
     return p
 
 class StaticMomentumBalanceSolver_U(CBCSolver):
     "Solves the static balance of linear momentum"
 
-    def __init__(self, problem, parameters):
+    def __init__(self, problem, parameters, coordinate_system = CartesianSystem()):
         """Initialise the static momentum balance solver"""
 
         # Get problem parameters
@@ -42,52 +43,36 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         # Define function spaces
         element_degree = parameters['element_degree']
         pbc = problem.periodic_boundaries()
-        if pbc == []:
-            vector = VectorFunctionSpace(mesh, "CG", element_degree)
-        else:
-            vector = VectorFunctionSpace(mesh, "CG", element_degree, constrained_domain = pbc)
+
+        vector = FunctionSpace_U(mesh, 'CG', element_degree, pbc)
+        vector.create_dirichlet_conditions(problem)
 
         # Print DOFs
-        print "Number of DOFs = %d" % vector.dim()
-
-        # Create boundary conditions
-        bcu = create_dirichlet_conditions(problem.dirichlet_values(),
-                                          problem.dirichlet_boundaries(),
-                                          vector)
+        print "Number of DOFs = %d" % vector.space.dim()
 
         # Define fields
         # Test and trial functions
-        v = TestFunction(vector)
-        u = Function(vector)
-        du = TrialFunction(vector)
+        v = vector.test_function()
+        u = vector.unknown()
+        du = vector.trial_function()
+
+        coordinate_system.set_mesh(mesh)
+        coordinate_system.set_displacement(u)
 
         # Driving forces
         B = problem.body_force()
+        P  = problem.first_pk_stress(u, coordinate_system)
 
+        
         # If no body forces are specified, assume it is 0
         if B == []:
-            B = Constant((0,)*vector.mesh().geometry().dim())
-
+            B = Constant((0,)*mesh.geometry().dim())
+        
         self.theta = Constant(1.0)
-        # First Piola-Kirchhoff stress tensor based on the material
-        # model
 
-        #coordinate_system = CartesianSystem(mesh = mesh, displacement = u)
-        coordinate_system = CylindricalSystem(mesh = mesh, displacement = u)
 
-        G_raise = coordinate_system.metric_tensor('raise')
-        jacobian = coordinate_system.volume_jacobian()
+        L1 = ElasticityDisplacementTerm(P, self.theta*B, v, coordinate_system)
 
-        P  = problem.first_pk_stress(u, coordinate_system)
-        if isinstance(P, tuple):
-            P_list, cell_function = P
-            new_dx = Measure('dx')[cell_function]
-            L = -self.theta*inner(B, v)*jacobian*new_dx
-            for (index, P) in enumerate(P_list):
-                L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*new_dx(index)
-        else:
-            # The variational form corresponding to hyperelasticity
-            L = inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*dx - self.theta*inner(B, v)*jacobian*dx
         # Add contributions to the form from the Neumann boundary
         # conditions
 
@@ -96,38 +81,24 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # If no Neumann conditions are specified, assume it is 0
         if neumann_conditions == []:
-            neumann_conditions = [Constant((0,)*vector.mesh().geometry().dim())]
+            neumann_conditions = [Constant((0,)*mesh.geometry().dim())]
 
         neumann_boundaries = problem.neumann_boundaries()
+        neumann_conditions = [self.theta*g for g in neumann_conditions]
 
-        boundary = FacetFunction("size_t", mesh)
-        boundary.set_all(len(neumann_boundaries) + 1)
+        L2 = NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, coordinate_system)
 
-
-
-        dsb = Measure('ds')[boundary]
-        for (i, neumann_boundary) in enumerate(neumann_boundaries):
-            compiled_boundary = CompiledSubDomain(neumann_boundary) 
-            compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*jacobian*dsb(i)
-
+        L = L1 + L2
 
         a = derivative(L, u, du)
 
-        solver = AugmentedNewtonSolver(L, u, a, bcu,\
+        solver = AugmentedNewtonSolver(L, u, a, vector.bcu,\
                                          load_increment = self.theta)
-        solver.parameters["loading_number_of_steps"] \
-                    = parameters["loading_number_of_steps"]
-        solver.parameters["relaxation_parameter"]["adaptive"] \
-                    = parameters["relaxation_parameter"]["adaptive"]
-        solver.parameters["relaxation_parameter"]["value"] \
-                    = parameters["relaxation_parameter"]["value"]
 
+        newton_parameters = parameters['newton_solver']
+        solver.parameters['newton_solver'].update(newton_parameters)
 
-        self.L = L
-        self.du = du
-        self.bcu = bcu
-        
+        self.functionspace = vector
 
         # Store parameters
         self.parameters = parameters
@@ -136,7 +107,6 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         # FIXME: Figure out why I am needed
         self.mesh = mesh
         self.equation = solver
-        self.u = u
 
     def solve(self):
         """Solve the mechanics problem and return the computed
@@ -144,24 +114,25 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # Solve problem
         self.equation.solve()
+        u = self.functionspace.u
 
 
         # Plot solution
         if self.parameters["plot_solution"]:
-            plot(self.u, title="Displacement", mode="displacement", rescale=True)
+            plot(u, title="Displacement", mode="displacement", rescale=True)
             interactive()
 
         # Store solution (for plotting)
         if self.parameters["save_solution"]:
             displacement_file = File("displacement.xdmf")
-            displacement_file << self.u
+            displacement_file << u
 
         # Store solution data
         if self.parameters["store_solution_data"]:
             displacement_series = TimeSeries("displacement")
-            displacement_series.store(self.u.vector(), 0.0)
+            displacement_series.store(u.vector(), 0.0)
 
-        return self.u
+        return u
 
 class StaticMomentumBalanceSolver_UP(CBCSolver):
     "Solves the static balance of linear momentum"
@@ -170,7 +141,7 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
     parameters['form_compiler']['optimize'] = True
     parameters['form_compiler']['quadrature_degree'] = 4
 
-    def __init__(self, problem, parameters):
+    def __init__(self, problem, parameters, coordinate_system = CartesianSystem()):
         """Initialise the static momentum balance solver"""
 
         # Get problem parameters
@@ -179,65 +150,42 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
         # Define function spaces
         element_degree = parameters["element_degree"]
 
+        
         pbc = problem.periodic_boundaries()
-        if pbc == []:
-            vector = VectorFunctionSpace(mesh, "CG", element_degree)
-            scalar = FunctionSpace(mesh,'CG', element_degree - 1)
-        else:
-            vector = VectorFunctionSpace(mesh, "CG", element_degree, constrained_domain = pbc)
-            scalar = FunctionSpace(mesh,'CG', element_degree - 1, constrained_domain = pbc)
-        mixed_space = MixedFunctionSpace([vector,scalar])
+        mixed_space = FunctionSpace_UP(mesh, 'CG', element_degree, pbc)
+        mixed_space.create_dirichlet_conditions(problem)
 
         # Print DOFs
-        print "Number of DOFs = %d" % mixed_space.dim()
+        print "Number of DOFs = %d" % mixed_space.space.dim()
 
         # Create boundary conditions
-        bcw = create_dirichlet_conditions(problem.dirichlet_values(),
-                                          problem.dirichlet_boundaries(),
-                                          mixed_space.sub(0))
 
         # Define fields
         # Test and trial functions
-        (v,q) = TestFunctions(mixed_space)
-        w = Function(mixed_space)
+        (v,q) = mixed_space.test_functions()
+        w = mixed_space.unknown()
         (u,p) = split(w)
-        dw = TrialFunction(mixed_space)
+        dw = mixed_space.trial_function()
 
         # Driving forces
         B = problem.body_force()
 
         # If no body forces are specified, assume it is 0
         if B == []:
-            B = Constant((0,)*vector.mesh().geometry().dim())
+            B = Constant((0,)*mesh.geometry().dim())
 
         # First Piola-Kirchhoff stress tensor based on the material
         # model
+
+        coordinate_system.set_mesh(mesh)
+        coordinate_system.set_displacement(u)
+
         self.theta = Constant(1.0)
-        G = Metric_Tensor(u,"up")
-        g = metric_tensor(u,"up")
-        chi = SpatialCoordinate(u.domain())
+        P  = problem.first_pk_stress(u, coordinate_system)
 
-        P  = problem.first_pk_stress(u,w.function_space().mesh())
-        J = Jacobian(u)
-        F = DeformationGradient(u)
-
-        if isinstance(P, tuple):
-            P_list, cell_function = P
-            material_list = problem.material_model(w.function_space().mesh())[0]
-            new_dx = Measure('dx')[cell_function]
-            L = - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*new_dx - self.theta*inner(B, v)*chi[0]*new_dx
-            for (index, P) in enumerate(P_list):
-                L += inner(P*G, Grad_Cyl(u,v))*chi[0]*new_dx(index)
-
-
-                material_parameters = material_list[index].parameters
-                lb = material_parameters['bulk']
-                L += (1.0/lb*p + J - 1.0)*q*chi[0]*new_dx(index)
-        else:
-            # The variational form corresponding to hyperelasticity
-            L = inner(P*G, Grad_Cyl(u,v))*chi[0]*dx - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*dx - self.theta*inner(B, v)*chi[0]*dx
-
-            L += (1.0/lb*p + J - 1.0)*q*chi[0]*dx
+        L = ElasticityPressureTerm(u, p, v, coordinate_system)
+        L += ElasticityDisplacementTerm(P, self.theta*B, v, coordinate_system)
+        L += VolumeChangeTerm(u, p, q, problem, coordinate_system)
 
 
         # Add contributions to the form from the Neumann boundary
@@ -248,30 +196,19 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
 
         # If no Neumann conditions are specified, assume it is 0
         if neumann_conditions == []:
-            neumann_conditions = Constant((0,)*vector.mesh().geometry().dim())
+            neumann_conditions = [Constant((0,)*mesh.geometry().dim())]
 
         neumann_boundaries = problem.neumann_boundaries()
+        neumann_conditions = [self.theta*g for g in neumann_conditions]
 
-        boundary = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
-        boundary.set_all(len(neumann_boundaries) + 1)
-
-        dsb = ds[boundary]
-        for (i, neumann_boundary) in enumerate(neumann_boundaries):
-            compiled_boundary = CompiledSubDomain(neumann_boundary)
-            compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*chi[0]*dsb(i)
-
+        L += NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, coordinate_system)
 
         a = derivative(L, w, dw)
 
-        solver = AugmentedNewtonSolver(L, w, a, bcw,\
+        solver = AugmentedNewtonSolver(L, w, a, mixed_space.bcu,\
                                          load_increment = self.theta)
-        solver.parameters["loading_number_of_steps"] \
-                    = parameters["loading_number_of_steps"]
-        solver.parameters["relaxation_parameter"]["adaptive"] \
-                    = parameters["relaxation_parameter"]["adaptive"]
-        solver.parameters["relaxation_parameter"]["value"] \
-                    = parameters["relaxation_parameter"]["value"]
+        newton_parameters = parameters['newton_solver']
+        solver.parameters['newton_solver'].update(newton_parameters)
 
 
         # Store parameters
@@ -316,154 +253,3 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
         return self.u, self.p
 
 
-class StaticMomentumBalanceSolver_Incompressible(CBCSolver):
-    "Solves the static balance of linear momentum"
-
-    parameters['form_compiler']['representation'] = 'uflacs'
-    parameters['form_compiler']['optimize'] = True
-    parameters['form_compiler']['quadrature_degree'] = 4
-
-    def __init__(self, problem, parameters):
-        """Initialise the static momentum balance solver"""
-
-        # Get problem parameters
-        mesh = problem.mesh()
-
-        # Define function spaces
-        element_degree = parameters["element_degree"]
-        
-        pbc = problem.periodic_boundaries()
-        if pbc == []:
-            vector = VectorFunctionSpace(mesh, "CG", element_degree)
-            scalar = FunctionSpace(mesh,'CG', element_degree - 1)
-        else:
-            vector = VectorFunctionSpace(mesh, "CG", element_degree, constrained_domain = pbc)
-            scalar = FunctionSpace(mesh,'CG', element_degree - 1, constrained_domain = pbc)
-
-        mixed_space = MixedFunctionSpace([vector,scalar])
-
-        # Print DOFs
-        print "Number of DOFs = %d" % mixed_space.dim()
-
-        # Create boundary conditions
-        bcw = create_dirichlet_conditions(problem.dirichlet_values(),
-                                          problem.dirichlet_boundaries(),
-                                          mixed_space.sub(0))
-
-        # Define fields
-        # Test and trial functions
-        (v,q) = TestFunctions(mixed_space)
-        w = Function(mixed_space)
-        (u,p) = split(w)
-        dw = TrialFunction(mixed_space)
-
-        # Driving forces
-        B = problem.body_force()
-
-        # If no body forces are specified, assume it is 0
-        if B == []:
-            B = Constant((0,)*vector.mesh().geometry().dim())
-
-        # First Piola-Kirchhoff stress tensor based on the material
-        # model
-
-        #TODO: DOOPRAVIT A DODELAT TADY TY CYLINDRICKY SOURADNICE.
-        # !!!! NENI FUNKCNI !!!!
-    
-        
-        self.theta = Constant(1.0)
-        G = Metric_Tensor(u,"up")
-        g = metric_tensor(u,"up")
-        chi = SpatialCoordinate(u.domain())
-
-        P  = problem.first_pk_stress(u,w.function_space().mesh())
-        J = Jacobian(u)
-        F = DeformationGradient(u)
-
-        if isinstance(P, tuple):
-            P_list, cell_function = P
-            new_dx = Measure('dx')[cell_function]
-            L1 = - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*new_dx - self.theta*inner(B, v)*chi[0]*new_dx
-            for (index, P) in enumerate(P_list):
-                L1 += inner(P*G, Grad_Cyl(u,v))*chi[0]*new_dx(index)
-        else:
-            # The variational form corresponding to hyperelasticity
-            L1 = inner(P*G, Grad_Cyl(u,v))*chi[0]*dx - p*J*inner(g*inv(F.T),Grad_Cyl(u,v))*chi[0]*dx - self.theta*inner(B, v)*chi[0]*dx
-
-        # The variational form corresponding to hyperelasticity
-
-        L2 = (J - 1.0)*q*chi[0]*dx
-        L = L1 + L2
-
-        # Add contributions to the form from the Neumann boundary
-        # conditions
-
-        # Get Neumann boundary conditions on the stress
-        neumann_conditions = problem.neumann_conditions()
-
-        # If no Neumann conditions are specified, assume it is 0
-        if neumann_conditions == []:
-            neumann_conditions = Constant((0,)*vector.mesh().geometry().dim())
-
-        neumann_boundaries = problem.neumann_boundaries()
-
-        boundary = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
-        boundary.set_all(len(neumann_boundaries) + 1)
-
-        dsb = ds[boundary]
-        for (i, neumann_boundary) in enumerate(neumann_boundaries):
-            compiled_boundary = CompiledSubDomain(neumann_boundary)
-            compiled_boundary.mark(boundary, i)
-            L = L - self.theta*inner(neumann_conditions[i], v)*chi[0]*dsb(i)
-
-        a = derivative(L, w, dw)
-
-        solver = AugmentedNewtonSolver(L, w, a, bcw,\
-                                         load_increment = self.theta)
-        solver.parameters["loading_number_of_steps"] \
-                    = parameters["loading_number_of_steps"]
-        solver.parameters["relaxation_parameter"]["adaptive"] \
-                    = parameters["relaxation_parameter"]["adaptive"]
-        solver.parameters["relaxation_parameter"]["value"] \
-                    = parameters["relaxation_parameter"]["value"]
-
-
-        # Store parameters
-        self.parameters = parameters
-
-        # Store variables needed for time-stepping
-        # FIXME: Figure out why I am needed
-        self.mesh = mesh
-        self.equation = solver
-        (u, p) = w.split()
-        self.u = u
-        self.p = p
-
-    def solve(self):
-        """Solve the mechanics problem and return the computed
-        displacement field"""
-
-        # Solve problem
-        self.equation.solve()
-
-        # Plot solution
-        if self.parameters["plot_solution"]:
-            plot(self.u, title="Displacement", mode="displacement", rescale=True)
-            plot(self.p, title="Pressure", rescale=True)
-            interactive()
-
-        # Store solution (for plotting)
-        if self.parameters["save_solution"]:
-            displacement_file = File("displacement.xdmf")
-            pressure_file = File("pressure.xdmf")
-            displacement_file << self.u
-            pressure_file << self.p
-
-        # Store solution data
-        if self.parameters["store_solution_data"]:
-            displacement_series = TimeSeries("displacement")
-            pressure_series = TimeSeries("pressure")
-            displacement_series.store(self.u.vector(), 0.0)
-            pressure_series.store(self.p.vector(),0.0)
-
-        return self.u, self.p

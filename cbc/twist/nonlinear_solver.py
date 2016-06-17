@@ -12,12 +12,12 @@ def default_solver_parameters():
     p.add("maximum_iterations", 50)
     p.add("absolute_tolerance", 1E-12)
     p.add("relative_tolerance", 1E-8)
-    p.add("loading_number_of_steps", 1) # if >1 => incremental loading used
     # Relaxation parameter setup - subparameter of solver_parameters
-    rel = Parameters("relaxation_parameter")
-    rel.add("value", 1.0)       # starting value of the relaxation parameter
-    rel.add("adaptive", True)   # should the solver use the adaptive approach?
-    p.add(rel)
+    new = Parameters("newton_solver")
+    new.add("value", 1.0)       # starting value of the relaxation parameter
+    new.add("adaptive", True)   # should the solver use the adaptive approach?
+    new.add("loading_number_of_steps", 1) # if >1 => incremental loading used
+    p.add(new)
 
     return p
     
@@ -43,8 +43,8 @@ class AugmentedNewtonSolver():
     def solve(self):
         """ Solve the nonlinear system F(u) == 0 """
 
-        relaxation = self.parameters["relaxation_parameter"]
-        n = self.parameters["loading_number_of_steps"]
+        relaxation = self.parameters["newton_solver"]
+        n = relaxation["loading_number_of_steps"]
          
 
         # Choose the solver implementation - adaptive vs. fenics default
@@ -124,7 +124,7 @@ class AugmentedNewtonSolver():
         """ Simple homemade Newton solver """
 
         # Get parameters
-        relaxation = self.parameters["relaxation_parameter"]
+        relaxation = self.parameters["newton_solver"]
         absolute_tol = self.parameters["absolute_tolerance"]
         max_iter = self.parameters["maximum_iterations"]
 

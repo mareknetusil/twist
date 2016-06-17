@@ -28,26 +28,6 @@ def Grad_Cyl(v, coordinate_system = CartesianSystem()):
     v_iI = Dx(v[i],I) - v[k]*gamma[k,i,j]*F[j,I]
 
     return as_tensor(v_iI, (i, I))
-    """
-    u = coordinate_system.displacement
-    chi = SpatialCoordinate(u.domain())
-
-    a00 = Dx(v[0],0) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],0)
-    a01 = Dx(v[0],1) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],1)
-    a02 = Dx(v[0],2) - v[1]/(chi[0]+u[0])*Dx(chi[1]+u[1],2)
-
-    a10 = Dx(v[1],0) + (chi[0]+u[0])*v[0]*Dx(chi[1]+u[1],0) - v[1]/(chi[0]+u[0])*Dx(chi[0]+u[0],0)
-    a11 = Dx(v[1],1) + (chi[0]+u[0])*v[0]*Dx(chi[1]+u[1],1) - v[1]/(chi[0]+u[0])*Dx(chi[0]+u[0],1)
-    a12 = Dx(v[1],2) + (chi[0]+u[0])*v[0]*Dx(chi[1]+u[1],2) - v[1]/(chi[0]+u[0])*Dx(chi[0]+u[0],2)
-
-    a20 = Dx(v[2],0)
-    a21 = Dx(v[2],1)
-    a22 = Dx(v[2],2)
-
-
-    return as_tensor([[a00,a01,a02],[a10,a11,a12],[a20,a21,a22]])
-    """  
-
 
 def Grad_U(u, coordinate_system = CartesianSystem()):
     #TODO: Something wrong with this!
@@ -93,21 +73,16 @@ def SecondOrderIdentity(u):
 
 # Determinant of the deformation gradient
 def Jacobian(u, coordinate_system = CartesianSystem()):
-    G = coordinate_system.metric_tensor('raise')
-    g = coordinate_system.metric_tensor('lower', deformed = True)
-    u = coordinate_system.displacement
     F = DeformationGradient(u)
+
+    if isinstance(coordinate_system, CartesianSystem):
+        return variable(det(F))
+    G_det = det(coordinate_system.metric_tensor('raise'))
+    g_det = det(coordinate_system.metric_tensor('lower', deformed = True))
 
     #TODO: Should it be sqrt(det(g)*det(G))?
-    return variable(sqrt(det(g)*det(G))*det(F))
+    return variable(g_det*G_det*det(F))
 
-
-    """
-    G = det(Metric_Tensor(u,'up'))
-    g = det(metric_tensor(u,'down'))
-    F = DeformationGradient(u)
-    return variable(g*G*det(F))
-    """
 
 # Right Cauchy-Green tensor
 def RightCauchyGreen(u, coordinate_system = CartesianSystem()):
