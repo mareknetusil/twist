@@ -4,7 +4,7 @@ __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
 from cbc.common import CBCProblem
-from cbc.twist.solution_algorithms_static import StaticMomentumBalanceSolver_U, StaticMomentumBalanceSolver_UP, StaticMomentumBalanceSolver_Incompressible
+from cbc.twist.solution_algorithms_static import StaticMomentumBalanceSolver_U, StaticMomentumBalanceSolver_UP
 from cbc.twist.solution_algorithms_dynamic import  MomentumBalanceSolver, CG1MomentumBalanceSolver
 from cbc.twist.solution_algorithms_static import default_parameters as solver_parameters
 from cbc.twist.kinematics import GreenLagrangeStrain
@@ -14,12 +14,13 @@ from sys import exit
 class StaticHyperelasticity(CBCProblem):
     """Base class for all static hyperelasticity problems"""
 
-    def __init__(self):
+    def __init__(self, coordinate_system = None):
         """Create the static hyperelasticity problem"""
 
         # Set up parameters
         self.parameters = Parameters("problem_parameters")
         self.parameters.add(solver_parameters())
+        self.coordinate_system = coordinate_system
 
     def solve(self):
         """Solve for and return the computed displacement field, u"""
@@ -28,9 +29,11 @@ class StaticHyperelasticity(CBCProblem):
         
         formulation = self.parameters['solver_parameters']['problem_formulation']
         if formulation == 'displacement':
-            self.solver = StaticMomentumBalanceSolver_U(self, self.parameters["solver_parameters"])
+            self.solver = StaticMomentumBalanceSolver_U(self, self.parameters["solver_parameters"],\
+                                self.coordinate_system)
         elif formulation == 'mixed_up':
-            self.solver = StaticMomentumBalanceSolver_UP(self, self.parameters['solver_parameters'])
+            self.solver = StaticMomentumBalanceSolver_UP(self, self.parameters['solver_parameters'],\
+                                self.coordinate_system)
 
         # Call solver
         return self.solver.solve()
@@ -68,34 +71,51 @@ class StaticHyperelasticity(CBCProblem):
     def material_model(self):
         pass
 
-    def first_pk_stress(self, u, coordinate_system = CartesianSystem()):
+    def first_pk_stress(self, u):
         """Return the first Piola-Kirchhoff stress tensor, P, given a
         displacement field, u"""
-        mesh = coordinate_system.mesh
-        if mesh == None:
-            mesh = u.function_space().mesh()
         
-        material_model = self.material_model(mesh)
+        material_model = self.material_model()
         if isinstance(material_model, tuple):
             fpk_list = []
-            material_list, cell_function = material_model
+            material_list, subdomains_list = material_model
             for material in material_list:
-                fpk_list.append(material.FirstPiolaKirchhoffStress(u, coordinate_system))
-            return (fpk_list, cell_function)
+                fpk_list.append(material.FirstPiolaKirchhoffStress(u, self.coordinate_system))
+            return (fpk_list, subdomains_list)
         else:
-            return material_model.FirstPiolaKirchhoffStress(u, coordinate_system)
+            return material_model.FirstPiolaKirchhoffStress(u, self.coordinate_system)
 
     def second_pk_stress(self, u):
         """Return the second Piola-Kirchhoff stress tensor, S, given a
         displacement field, u"""
-        return self.material_model().SecondPiolaKirchhoffStress(u, coordinate_system)
+        material_model = self.material_model()
+        if isinstance(material_model, tuple):
+            spk_list = []
+            material_list, subdomains_list = material_model
+            for material in material_list:
+                spk_list.append(material.SecondPiolaKirchhoffStress(u, self.coordinate_system))
+            return (spk_list, subdomains_list)
+        else:
+            return self.material_model().SecondPiolaKirchhoffStress(u, self.coordinate_system)
 
     def strain_energy(self, u):
-        """Return the strain (potential) energy given a displacement
+        """Return the strain (potential) energy density given a displacement
         field, u"""
-        S = self.material_model().SecondPiolaKirchhoffStress(u)
+
+        S = self.second_pk_stress(u)
         E = GreenLagrangeStrain(u)
-        psi = assemble(0.5*inner(S, E)*dx, mesh=u.function_space().mesh())
+        if isinstance(S, tuple):
+            S_list, subdomains_list = S
+            V = FunctionSpace(u.function_space().mesh(), 'DG', 0)
+            temp = Function(V)
+            psi = Function(V)
+            subdomains = subdomains_list[0]
+            for cell_no in range(len(subdomains[0].array())):
+                subdomain_no = subdomains[0].array()[cell_no]
+                temp = project(0.5*inner(S_list[int(subdomain_no - 1)], E), V)
+                psi.vector()[cell_no] = temp.vector()[cell_no][0]
+        else:
+            psi = 0.5*inner(S, E)
         return psi
 
     def functional(self, u):

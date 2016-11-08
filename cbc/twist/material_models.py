@@ -56,6 +56,8 @@ class neoHookean(MaterialModel):
         self.kinematic_measure = "CauchyGreenInvariants"
 
     def strain_energy(self, parameters):
+        #TODO: Model should be different for the U and UP formulation
+
         J = sqrt(self.I3)
         I1bar = J**(-2.0/3.0)*self.I1
         I1 = self.I1

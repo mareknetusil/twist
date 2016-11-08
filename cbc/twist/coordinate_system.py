@@ -34,7 +34,7 @@ class CoordinateSystem():
         return h[0]*h[1]*h[2]
 
 
-
+#TODO: Think about removing this class
 class CartesianSystem(CoordinateSystem):
     
     def lame_coefficients(self, deformed = False):

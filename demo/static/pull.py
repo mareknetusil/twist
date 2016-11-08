@@ -9,7 +9,7 @@ class Twist(StaticHyperelasticity):
     """ Definition of the hyperelastic problem """
 
     def mesh(self):
-        n = 8
+        n = 9
         return UnitCubeMesh(n, n, n)
 
     # Setting up dirichlet conditions and boundaries
@@ -39,7 +39,7 @@ class Twist(StaticHyperelasticity):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
         mu       = 1e2
-        lmbda    = 1e2
+        lmbda    = -1
         C10 = 0.171; C01 = 4.89e-3; C20 = -2.4e-4; C30 = 5.e-4
         delka = 1.0/sqrt(2.0)
         M = Constant((0.0,1.0,0.0))
@@ -75,7 +75,10 @@ class Twist(StaticHyperelasticity):
 # Setup the problem
 twist = Twist()
 twist.name_method("DISPLACEMENT BASED FORMULATION")
+twist.parameters['solver_parameters']['problem_formulation'] = 'mixed_up'
 
 # Solve the problem
 print twist
-u = twist.solve()
+(u,p) = twist.solve()
+plot(Jacobian(u), interactive=True)
+

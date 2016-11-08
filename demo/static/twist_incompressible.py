@@ -28,7 +28,7 @@ class Twist(StaticHyperelasticity):
 
 
     # List of material models
-    def material_model(self):
+    def material_model(self, mesh):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
         mu       = 3.8461
@@ -68,7 +68,7 @@ class Twist(StaticHyperelasticity):
 # Setup the problem
 twist = Twist()
 twist.name_method("UP FORMULATION BASED METHOD")
-twist.parameters['solver_parameters']['problem_formulation'] = 'incompressible'
+#twist.parameters['solver_parameters']['problem_formulation'] = 'incompressible'
 
 # Solve the problem
 print twist

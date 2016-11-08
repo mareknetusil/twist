@@ -4,29 +4,37 @@ from cbc.twist.coordinate_system import *
 from cbc.twist.kinematics import *
 from cbc.common import *
 
-def ElasticityDisplacementTerm(P, B, v, coordinate_system = CartesianSystem()):
+def ElasticityDisplacementTerm(P, B, v, coordinate_system = None):
 
-    G_raise = coordinate_system.metric_tensor('raise')
-    jacobian = coordinate_system.volume_jacobian()
+    if coordinate_system:
+        G_raise = coordinate_system.metric_tensor('raise')
+        jacobian = coordinate_system.volume_jacobian()
+    else:
+        G_raise = SecondOrderIdentity(v)
+        jacobian = Constant(1.0)
 
     L = -inner(B, v)*jacobian*dx
 
     # The variational form corresponding to hyperelasticity
     if isinstance(P, tuple):
-        P_list, cell_function = P
-        new_dx = Measure('dx')[cell_function]
+        P_list, subdomains_list = P
+
         for (index, P) in enumerate(P_list):
-            L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*new_dx(index)
+            new_dx = Measure('dx')[subdomains_list[index][0]]
+            L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*new_dx(subdomains_list[index][1])
     else:
         L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*dx
-
 
     return L
 
 
-def ElasticityPressureTerm(u, p, v, coordinate_system = CartesianSystem()):
-    g = coordinate_system.metric_tensor('raise', deformed = True)
-    jacobian = coordinate_system.volume_jacobian()
+def ElasticityPressureTerm(u, p, v, coordinate_system = None):
+    if coordinate_system:
+        g = coordinate_system.metric_tensor('raise', deformed = True)
+        jacobian = coordinate_system.volume_jacobian()
+    else:
+        g = SecondOrderIdentity(v)
+        jacobian = Constant(1.0)
     J = Jacobian(u, coordinate_system)
     F = DeformationGradient(u)
 
@@ -35,9 +43,10 @@ def ElasticityPressureTerm(u, p, v, coordinate_system = CartesianSystem()):
 
 
 
-def VolumeChangeTerm(u, p, q, problem, coordinate_system = CartesianSystem()):
+def VolumeChangeTerm(u, p, q, problem, coordinate_system = None):
     material_model = problem.material_model(problem.mesh())
-    jacobian = coordinate_system.volume_jacobian()
+    jacobian = coordinate_system.volume_jacobian() if coordinate_system else Constant(1.0)
+
     J = Jacobian(u, coordinate_system)
     
     L = Constant(0.0)*q*jacobian*dx
@@ -63,15 +72,14 @@ def VolumeChangeTerm(u, p, q, problem, coordinate_system = CartesianSystem()):
 
 
 
+#TODO: Implement the curvilinear coordinates
+def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v):
 
-def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, coordinate_system = CartesianSystem()):
 
-
-    boundary = FacetFunction("size_t", coordinate_system.mesh)
+    boundary = FacetFunction("size_t", v.function_space().mesh())
     boundary.set_all(len(neumann_boundaries) + 1)
 
-    dim = v.domain().geometric_dimension()
-    L = - inner(Constant((0,)*dim), v)*ds
+    L = - inner(Constant((0,)*v.geometric_dimension()), v)*ds
     dsb = Measure('ds')[boundary]
     for (i, neumann_boundary) in enumerate(neumann_boundaries):
         compiled_boundary = CompiledSubDomain(neumann_boundary) 
@@ -89,19 +97,18 @@ class FunctionSpace_U():
             self.space = VectorFunctionSpace(mesh, element_type, element_degree)
         else:
             self.space = VectorFunctionSpace(mesh, element_type, element_degree, constrained_domain = pbc)
-            
+        self._unknown = Function(self.space)
+        self._test_function = TestFunction(self.space)
+        self._trial_function = TrialFunction(self.space)
 
     def unknown(self):
-        self.u = Function(self.space)
-        return self.u
+        return self._unknown
 
     def test_function(self):
-        self.v = TestFunction(self.space)
-        return self.v
+        return self._test_function
 
     def trial_function(self):
-        self.du = TrialFunction(self.space)
-        return self.du
+        return self._trial_function
 
     def create_dirichlet_conditions(self, problem):
         self.bcu = create_dirichlet_conditions(problem.dirichlet_values(),
@@ -137,6 +144,3 @@ class FunctionSpace_UP():
                                             problem.dirichlet_boundaries(),
                                             self.space.sub(0))
         return self.bcu
-
-
-

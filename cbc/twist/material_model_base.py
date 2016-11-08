@@ -40,7 +40,7 @@ class MaterialModel():
                 
         return parameters
 
-    def _construct_local_kinematics(self, u, coordinate_system = CartesianSystem()):
+    def _construct_local_kinematics(self, u, coordinate_system = None):
         self.I = SecondOrderIdentity(u)
         self.epsilon = InfinitesimalStrain(u)
         self.F = DeformationGradient(u)
@@ -59,10 +59,14 @@ class MaterialModel():
     def strain_energy(self, parameters):
         pass
 
-    def SecondPiolaKirchhoffStress(self, u, coordinate_system = CartesianSystem()):
+    def SecondPiolaKirchhoffStress(self, u, coordinate_system = None):
         self._construct_local_kinematics(u, coordinate_system)
-        G_raise = coordinate_system.metric_tensor('raise')
-        G_lower = coordinate_system.metric_tensor('lower')
+        if coordinate_system:
+            G_raise = coordinate_system.metric_tensor('raise')
+            G_lower = coordinate_system.metric_tensor('lower')
+        else:
+            G_raise = self.I
+            G_lower = self.I
 
         psi = self.strain_energy(MaterialModel._parameters_as_functions(self, u))
 
@@ -95,7 +99,7 @@ class MaterialModel():
             S = 1.0/l1*diff(psi, l1) + 1.0/l2*diff(psi, l2) + 1.0/l3*diff(psi, l3)
         return S
 
-    def FirstPiolaKirchhoffStress(self, u, coordinate_system = CartesianSystem()):
+    def FirstPiolaKirchhoffStress(self, u, coordinate_system = None):
         S = self.SecondPiolaKirchhoffStress(u, coordinate_system)
         F = self.F
         P = F*S

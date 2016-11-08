@@ -34,65 +34,55 @@ def default_parameters():
 class StaticMomentumBalanceSolver_U(CBCSolver):
     "Solves the static balance of linear momentum"
 
-    def __init__(self, problem, parameters, coordinate_system = CartesianSystem()):
+    def __init__(self, problem, parameters, coordinate_system = None):
         """Initialise the static momentum balance solver"""
-
-        # Get problem parameters
-        mesh = problem.mesh()
 
         # Define function spaces
         element_degree = parameters['element_degree']
         pbc = problem.periodic_boundaries()
 
-        vector = FunctionSpace_U(mesh, 'CG', element_degree, pbc)
+        vector = FunctionSpace_U(problem.mesh(), 'CG', element_degree, pbc)
         vector.create_dirichlet_conditions(problem)
 
         # Print DOFs
         print "Number of DOFs = %d" % vector.space.dim()
 
-        # Define fields
-        # Test and trial functions
-        v = vector.test_function()
-        u = vector.unknown()
-        du = vector.trial_function()
-
-        coordinate_system.set_mesh(mesh)
-        coordinate_system.set_displacement(u)
+        if coordinate_system:
+            coordinate_system.set_mesh(problem.mesh())
+            coordinate_system.set_displacement(vector.unknown())
 
         # Driving forces
         B = problem.body_force()
-        P  = problem.first_pk_stress(u, coordinate_system)
+        P  = problem.first_pk_stress(vector.unknown())
 
         
         # If no body forces are specified, assume it is 0
         if B == []:
-            B = Constant((0,)*mesh.geometry().dim())
+            B = Constant((0,)*vector.test_function().geometric_dimension())
         
         self.theta = Constant(1.0)
 
 
-        L1 = ElasticityDisplacementTerm(P, self.theta*B, v, coordinate_system)
+        L1 = ElasticityDisplacementTerm(P, self.theta*B, vector.test_function(), coordinate_system)
 
         # Add contributions to the form from the Neumann boundary
         # conditions
-
-        # Get Neumann boundary conditions on the stress
         neumann_conditions = problem.neumann_conditions()
+        
 
         # If no Neumann conditions are specified, assume it is 0
         if neumann_conditions == []:
-            neumann_conditions = [Constant((0,)*mesh.geometry().dim())]
+            neumann_conditions = [Constant((0,)*vector.test_function().geometric_dimension())]
 
-        neumann_boundaries = problem.neumann_boundaries()
         neumann_conditions = [self.theta*g for g in neumann_conditions]
 
-        L2 = NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, coordinate_system)
+        L2 = NeumannBoundaryTerm(neumann_conditions, problem.neumann_boundaries(), vector.test_function())
 
         L = L1 + L2
 
-        a = derivative(L, u, du)
+        a = derivative(L, vector.unknown(), vector.trial_function())
 
-        solver = AugmentedNewtonSolver(L, u, a, vector.bcu,\
+        solver = AugmentedNewtonSolver(L, vector.unknown(), a, vector.bcu,\
                                          load_increment = self.theta)
 
         newton_parameters = parameters['newton_solver']
@@ -105,8 +95,9 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # Store variables needed for time-stepping
         # FIXME: Figure out why I am needed
-        self.mesh = mesh
+        self.mesh = problem.mesh()
         self.equation = solver
+        self.a = a
 
     def solve(self):
         """Solve the mechanics problem and return the computed
@@ -114,7 +105,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # Solve problem
         self.equation.solve()
-        u = self.functionspace.u
+        u = self.functionspace.unknown()
 
 
         # Plot solution
@@ -123,6 +114,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
             interactive()
 
         # Store solution (for plotting)
+        #FIXME: Update to XDMFFile
         if self.parameters["save_solution"]:
             displacement_file = File("displacement.xdmf")
             displacement_file << u
@@ -218,6 +210,8 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
         # FIXME: Figure out why I am needed
         self.mesh = mesh
         self.equation = solver
+        self.a = a
+        import pdb; pdb.set_trace()
         (u, p) = w.split()
         self.u = u
         self.p = p
