@@ -113,14 +113,14 @@ class MaterialModel():
 class MaterialModel_Anisotropic(MaterialModel):
     """ Base class for simple  transverse isotropic hyperelastic materials """
     
-    def _construct_local_kinematics(self, u):
-        MaterialModel._construct_local_kinematics(self, u)
+    def _construct_local_kinematics(self, u, coordinate_system = None):
+        MaterialModel._construct_local_kinematics(self, u, coordinate_system)
         M = self.parameters['M']
         self.I4 = DirectionalStretch(u, M)
         self.I5 = DirectionalStretch(u, M, 2)
 
-    def SecondPiolaKirchhoffStress(self, u):
-        self._construct_local_kinematics(u)
+    def SecondPiolaKirchhoffStress(self, u, coordinate_system = None):
+        self._construct_local_kinematics(u, coordinate_system)
         psi = self.strain_energy(MaterialModel._parameters_as_functions(self, u))
 
         if self.kinematic_measure == "InfinitesimalStrain":

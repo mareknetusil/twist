@@ -110,7 +110,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # Plot solution
         if self.parameters["plot_solution"]:
-            plot(u, title="Displacement", mode="displacement", rescale=True)
+            plot(u, title="Displacement", mode="displacement", axes=True, rescale=True)
             interactive()
 
         # Store solution (for plotting)
@@ -220,8 +220,8 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
 
         # Plot solution
         if self.parameters["plot_solution"]:
-            plot(self.u, title="Displacement", mode="displacement", rescale=True)
-            plot(self.p, title="Pressure", rescale=True)
+            plot(self.u, title="Displacement", mode="displacement", axes=True, rescale=True)
+            plot(self.p, title="Pressure", axes=True, rescale=True)
             interactive()
 
         # Store solution (for plotting)

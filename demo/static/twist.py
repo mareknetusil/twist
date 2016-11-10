@@ -8,9 +8,13 @@ from sys import argv
 
 class Twist(StaticHyperelasticity):
     """ Definition of the hyperelastic problem """
-    def mesh(self):
+    def __init__(self, *args, **kwargs):
+        StaticHyperelasticity.__init__(self, *args, **kwargs)
         n = 8
-        return UnitCubeMesh(n, n, n)
+        self._mesh = UnitCubeMesh(n, n, n)
+
+    def mesh(self):
+        return self._mesh
 
     # Setting up dirichlet conditions and boundaries
     def dirichlet_values(self):
@@ -28,7 +32,7 @@ class Twist(StaticHyperelasticity):
 
 
     # List of material models
-    def material_model(self, mesh):
+    def material_model(self):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
         mu       = 3.8461

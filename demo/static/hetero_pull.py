@@ -5,12 +5,15 @@ from sys import argv
 
 """ DEMO - Hyperelastic cube is stretched/compressed by a traction acting on one side """
 
-class Twist(StaticHyperelasticity):
+class Pull(StaticHyperelasticity):
     """ Definition of the hyperelastic problem """
+    def __init__(self, *args, **kwargs):
+        StaticHyperelasticity.__init__(self, *args, **kwargs)
+        n = 10
+        self._mesh = UnitCubeMesh(n, n, n)
 
     def mesh(self):
-        n = 10
-        return UnitCubeMesh(n, n, n)
+        return self._mesh
 
     # Setting up dirichlet conditions and boundaries
     def dirichlet_values(self):
@@ -35,7 +38,7 @@ class Twist(StaticHyperelasticity):
     
 
     # List of material models
-    def material_model(self, mesh):
+    def material_model(self):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
         mu       = 1e2
@@ -43,7 +46,8 @@ class Twist(StaticHyperelasticity):
         C10 = 0.171; C01 = 4.89e-3; C20 = -2.4e-4; C30 = 5.e-4
         delka = 1.0/sqrt(2.0)
 
-        M = Constant((1.0,0.0,0.0))
+        l = sqrt(2.0)/2.0
+        M = Constant((l,0.0,l))
         k1 = 1e3; k2 = 1e1
 
 
@@ -58,7 +62,7 @@ class Twist(StaticHyperelasticity):
         materials.append(Ogden({'alpha1':1.3,'alpha2':5.0,'alpha3':-2.0,\
                                 'mu1':6.3e5,'mu2':0.012e5,'mu3':-0.1e5}))
 
-        subdomains = CellFunction('size_t', mesh)
+        subdomains = CellFunction('size_t', self._mesh)
         subdomains.set_all(0)
         right = AutoSubDomain(lambda x: x[0] >= .8)
         middle = AutoSubDomain(lambda x: pow(x[0] - .5, 2) <= .01)
@@ -68,21 +72,22 @@ class Twist(StaticHyperelasticity):
         left.mark(subdomains, 1)
 
         material_list = [materials[2], materials[6]]
+        subdomains_list = [(subdomains, 0), (subdomains, 1)]
 
-        return (material_list, subdomains)
+        return (material_list, subdomains_list)
 
     def name_method(self, method):
         self.method = method
 
     def __str__(self):
-        return "A hyperelastic cube stretching/compression solved by " + self.method
+        return "A hyperelastic heterogeneous cube stretching/compression solved by " + self.method
 
 
 
 # Setup the problem
-twist = Twist()
-twist.name_method("DISPLACEMENT BASED FORMULATION")
+pull = Pull()
+pull.name_method("DISPLACEMENT BASED FORMULATION")
 
 # Solve the problem
-print twist
-twist.solve()
+print pull
+pull.solve()

@@ -5,12 +5,16 @@ from sys import argv
 
 """ DEMO - Hyperelastic cube is stretched/compressed by a traction acting on one side """
 
-class Twist(StaticHyperelasticity):
+class Pull(StaticHyperelasticity):
     """ Definition of the hyperelastic problem """
 
+    def __init__(self, *args, **kwargs):
+        StaticHyperelasticity.__init__(self, *args, **kwargs)
+        n = 8
+        self._mesh = UnitCubeMesh(n, n, n)
+
     def mesh(self):
-        n = 9
-        return UnitCubeMesh(n, n, n)
+        return self._mesh
 
     # Setting up dirichlet conditions and boundaries
     def dirichlet_values(self):
@@ -35,14 +39,14 @@ class Twist(StaticHyperelasticity):
     
 
     # List of material models
-    def material_model(self, mesh):
+    def material_model(self):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
         mu       = 1e2
-        lmbda    = -1
+        lmbda    = 1e2
         C10 = 0.171; C01 = 4.89e-3; C20 = -2.4e-4; C30 = 5.e-4
-        delka = 1.0/sqrt(2.0)
-        M = Constant((0.0,1.0,0.0))
+        l = sqrt(2.0)/2.0
+        M = Constant((l,0.0,l))
         k1 = 1e2; k2 = 1e1
 
 
@@ -73,12 +77,11 @@ class Twist(StaticHyperelasticity):
 
 
 # Setup the problem
-twist = Twist()
-twist.name_method("DISPLACEMENT BASED FORMULATION")
-twist.parameters['solver_parameters']['problem_formulation'] = 'mixed_up'
+pull = Pull()
+pull.name_method("DISPLACEMENT BASED FORMULATION")
+#pull.parameters['solver_parameters']['problem_formulation'] = 'mixed_up'
 
 # Solve the problem
-print twist
-(u,p) = twist.solve()
-plot(Jacobian(u), interactive=True)
+print pull
+pull.solve()
 
