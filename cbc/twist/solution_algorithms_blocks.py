@@ -44,7 +44,7 @@ def ElasticityPressureTerm(u, p, v, coordinate_system = None):
 
 
 def VolumeChangeTerm(u, p, q, problem, coordinate_system = None):
-    material_model = problem.material_model(problem.mesh())
+    material_model = problem.material_model()
     jacobian = coordinate_system.volume_jacobian() if coordinate_system else Constant(1.0)
 
     J = Jacobian(u, coordinate_system)
@@ -61,7 +61,7 @@ def VolumeChangeTerm(u, p, q, problem, coordinate_system = None):
             else:
                 L += (1.0/lb*p + J - 1.0)*q*jacobian*new_dx(index)
     else:
-        lb = problem.material_model(mesh).parameters['bulk']
+        lb = problem.material_model().parameters['bulk']
         if lb <= 0.0:
             L+= (J - 1.0)*q*jacobian*dx
         else:
@@ -73,10 +73,11 @@ def VolumeChangeTerm(u, p, q, problem, coordinate_system = None):
 
 
 #TODO: Implement the curvilinear coordinates
-def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v):
+#TODO: Get rid of the mesh argument
+def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, mesh):
 
 
-    boundary = FacetFunction("size_t", v.function_space().mesh())
+    boundary = FacetFunction("size_t", mesh)
     boundary.set_all(len(neumann_boundaries) + 1)
 
     L = - inner(Constant((0,)*v.geometric_dimension()), v)*ds
@@ -97,18 +98,19 @@ class FunctionSpace_U():
             self.space = VectorFunctionSpace(mesh, element_type, element_degree)
         else:
             self.space = VectorFunctionSpace(mesh, element_type, element_degree, constrained_domain = pbc)
-        self._unknown = Function(self.space)
-        self._test_function = TestFunction(self.space)
-        self._trial_function = TrialFunction(self.space)
+        self._unknown_displacement = Function(self.space)
+        self._test_displacement = TestFunction(self.space)
+        self._trial_displacement = TrialFunction(self.space)
 
-    def unknown(self):
-        return self._unknown
-
-    def test_function(self):
-        return self._test_function
-
-    def trial_function(self):
-        return self._trial_function
+    @property
+    def unknown_displacement(self):
+        return self._unknown_displacement
+    @property
+    def test_displacement(self):
+        return self._test_displacement
+    @property
+    def trial_displacement(self):
+        return self._trial_displacement
 
     def create_dirichlet_conditions(self, problem):
         self.bcu = create_dirichlet_conditions(problem.dirichlet_values(),
@@ -126,18 +128,19 @@ class FunctionSpace_UP():
             vector = VectorFunctionSpace(mesh, element_type, element_degree, constrained_domain = pbc)
             scalar = FunctionSpace(mesh, element_type, element_degree - 1, constrained_domain = pbc)
         self.space = MixedFunctionSpace([vector,scalar])
+        self._unknown_vector = Function(self.space)
+        (self._test_displacement, self._test_pressure) = TestFunctions(self.space)
+        self._trial_vector = TrialFunction(self.space)
 
-    def unknown(self):
-        self.w = Function(self.space)
-        return self.w
-
-    def test_functions(self):
-        (self.v, self.q) = TestFunctions(self.space)
-        return (self.v, self.q)
-
-    def trial_function(self):
-        self.dw = TrialFunction(self.space)
-        return self.dw
+    @property
+    def unknown_vector(self):
+        return self._unknown_vector
+    @property
+    def test_vector(self):
+        return (self._test_displacement, self._test_pressure)
+    @property
+    def trial_vector(self):
+        return self._trial_vector
 
     def create_dirichlet_conditions(self, problem):
         self.bcu = create_dirichlet_conditions(problem.dirichlet_values(),

@@ -49,21 +49,21 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         if coordinate_system:
             coordinate_system.set_mesh(problem.mesh())
-            coordinate_system.set_displacement(vector.unknown())
+            coordinate_system.set_displacement(vector.unknown_displacement)
 
         # Driving forces
         B = problem.body_force()
-        P  = problem.first_pk_stress(vector.unknown())
+        P  = problem.first_pk_stress(vector.unknown_displacement)
 
         
         # If no body forces are specified, assume it is 0
         if B == []:
-            B = Constant((0,)*vector.test_function().geometric_dimension())
+            B = Constant((0,)*vector.test_displacement.geometric_dimension())
         
         self.theta = Constant(1.0)
 
 
-        L1 = ElasticityDisplacementTerm(P, self.theta*B, vector.test_function(), coordinate_system)
+        L1 = ElasticityDisplacementTerm(P, self.theta*B, vector.test_displacement, coordinate_system)
 
         # Add contributions to the form from the Neumann boundary
         # conditions
@@ -72,17 +72,17 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # If no Neumann conditions are specified, assume it is 0
         if neumann_conditions == []:
-            neumann_conditions = [Constant((0,)*vector.test_function().geometric_dimension())]
+            neumann_conditions = [Constant((0,)*vector.test_displacement.geometric_dimension())]
 
         neumann_conditions = [self.theta*g for g in neumann_conditions]
 
-        L2 = NeumannBoundaryTerm(neumann_conditions, problem.neumann_boundaries(), vector.test_function())
+        L2 = NeumannBoundaryTerm(neumann_conditions, problem.neumann_boundaries(), vector.test_displacement, problem.mesh())
 
         L = L1 + L2
 
-        a = derivative(L, vector.unknown(), vector.trial_function())
+        a = derivative(L, vector.unknown_displacement, vector.trial_displacement)
 
-        solver = AugmentedNewtonSolver(L, vector.unknown(), a, vector.bcu,\
+        solver = AugmentedNewtonSolver(L, vector.unknown_displacement, a, vector.bcu,\
                                          load_increment = self.theta)
 
         newton_parameters = parameters['newton_solver']
@@ -105,7 +105,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # Solve problem
         self.equation.solve()
-        u = self.functionspace.unknown()
+        u = self.functionspace.unknown_displacement
 
 
         # Plot solution
@@ -133,18 +133,16 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
     parameters['form_compiler']['optimize'] = True
     parameters['form_compiler']['quadrature_degree'] = 4
 
-    def __init__(self, problem, parameters, coordinate_system = CartesianSystem()):
+    def __init__(self, problem, parameters, coordinate_system = None):
         """Initialise the static momentum balance solver"""
 
         # Get problem parameters
-        mesh = problem.mesh()
 
         # Define function spaces
         element_degree = parameters["element_degree"]
-
-        
         pbc = problem.periodic_boundaries()
-        mixed_space = FunctionSpace_UP(mesh, 'CG', element_degree, pbc)
+
+        mixed_space = FunctionSpace_UP(problem.mesh(), 'CG', element_degree, pbc)
         mixed_space.create_dirichlet_conditions(problem)
 
         # Print DOFs
@@ -154,30 +152,28 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
 
         # Define fields
         # Test and trial functions
-        (v,q) = mixed_space.test_functions()
-        w = mixed_space.unknown()
+        w = mixed_space.unknown_vector
         (u,p) = split(w)
-        dw = mixed_space.trial_function()
 
         # Driving forces
         B = problem.body_force()
 
         # If no body forces are specified, assume it is 0
         if B == []:
-            B = Constant((0,)*mesh.geometry().dim())
+            B = Constant((0,)*problem.mesh().geometry().dim())
 
         # First Piola-Kirchhoff stress tensor based on the material
         # model
-
-        coordinate_system.set_mesh(mesh)
-        coordinate_system.set_displacement(u)
+        if coordinate_system:
+            coordinate_system.set_mesh(problem.mesh())
+            coordinate_system.set_displacement(u)
 
         self.theta = Constant(1.0)
-        P  = problem.first_pk_stress(u, coordinate_system)
+        P  = problem.first_pk_stress(u)
 
-        L = ElasticityPressureTerm(u, p, v, coordinate_system)
-        L += ElasticityDisplacementTerm(P, self.theta*B, v, coordinate_system)
-        L += VolumeChangeTerm(u, p, q, problem, coordinate_system)
+        L = ElasticityPressureTerm(u, p, mixed_space.test_vector[0], coordinate_system)
+        L += ElasticityDisplacementTerm(P, self.theta*B, mixed_space.test_vector[0], coordinate_system)
+        L += VolumeChangeTerm(u, p, mixed_space.test_vector[1], problem, coordinate_system)
 
 
         # Add contributions to the form from the Neumann boundary
@@ -188,14 +184,13 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
 
         # If no Neumann conditions are specified, assume it is 0
         if neumann_conditions == []:
-            neumann_conditions = [Constant((0,)*mesh.geometry().dim())]
+            neumann_conditions = [Constant((0,)*problem.mesh().geometry().dim())]
 
-        neumann_boundaries = problem.neumann_boundaries()
         neumann_conditions = [self.theta*g for g in neumann_conditions]
 
-        L += NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, coordinate_system)
+        L += NeumannBoundaryTerm(neumann_conditions, problem.neumann_boundaries(), mixed_space.test_vector[0], problem.mesh())
 
-        a = derivative(L, w, dw)
+        a = derivative(L, w, mixed_space.trial_vector)
 
         solver = AugmentedNewtonSolver(L, w, a, mixed_space.bcu,\
                                          load_increment = self.theta)
@@ -208,10 +203,9 @@ class StaticMomentumBalanceSolver_UP(CBCSolver):
 
         # Store variables needed for time-stepping
         # FIXME: Figure out why I am needed
-        self.mesh = mesh
+        self.mesh = problem.mesh()
         self.equation = solver
         self.a = a
-        import pdb; pdb.set_trace()
         (u, p) = w.split()
         self.u = u
         self.p = p
