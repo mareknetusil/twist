@@ -64,7 +64,7 @@ class neoHookean(MaterialModel):
 
         half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
         return half_nkT*(I1bar - 3.0) + bulk*(J - 1.0)**2
-        #return half_nkT*(I1 - 3.0)    
+        #return half_nkT*(I1bar - 3.0)    
 
 
 class Isihara(MaterialModel):

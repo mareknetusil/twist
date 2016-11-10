@@ -20,7 +20,7 @@ def ElasticityDisplacementTerm(P, B, v, coordinate_system = None):
         P_list, subdomains_list = P
 
         for (index, P) in enumerate(P_list):
-            new_dx = Measure('dx')[subdomains_list[index][0]]
+            new_dx = Measure('dx')(subdomain_data = subdomains_list[index][0])
             L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*new_dx(subdomains_list[index][1])
     else:
         L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*dx
@@ -81,7 +81,7 @@ def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, mesh):
     boundary.set_all(len(neumann_boundaries) + 1)
 
     L = - inner(Constant((0,)*v.geometric_dimension()), v)*ds
-    dsb = Measure('ds')[boundary]
+    dsb = Measure('ds')(subdomain_data = boundary)
     for (i, neumann_boundary) in enumerate(neumann_boundaries):
         compiled_boundary = CompiledSubDomain(neumann_boundary) 
         compiled_boundary.mark(boundary, i)
