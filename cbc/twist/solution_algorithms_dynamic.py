@@ -19,7 +19,7 @@ def default_parameters():
     p.add("plot_solution", True)
     p.add("save_solution", False)
     p.add("store_solution_data", False)
-    p.add("element_degree",2)
+    p.add("element_degree",1)
     p.add("problem_formulation",'displacement')
     rel = Parameters("relaxation_parameter")
     rel.add("value", 1.0)
@@ -318,14 +318,15 @@ class CG1MomentumBalanceSolver(CBCSolver):
 
         # Define function spaces
         element_degree = parameters["element_degree"]
-        scalar = FunctionSpace(mesh, "CG", element_degree)
-        vector = VectorFunctionSpace(mesh, "CG", element_degree)
+        scalar = FiniteElement("CG", mesh.ufl_cell(), element_degree)
+        vector = VectorElement("CG", mesh.ufl_cell(), element_degree)
 
-        mixed_element = MixedFunctionSpace([vector, vector])
-        V = TestFunction(mixed_element)
-        dU = TrialFunction(mixed_element)
-        U = Function(mixed_element)
-        U0 = Function(mixed_element)
+        vector_space = FunctionSpace(mesh, vector)
+        mixed_space = FunctionSpace(mesh, vector*vector)
+        V = TestFunction(mixed_space)
+        dU = TrialFunction(mixed_space)
+        U = Function(mixed_space)
+        U0 = Function(mixed_space)
 
         # Get initial conditions
         u0, v0 = problem.initial_conditions()
@@ -341,14 +342,13 @@ class CG1MomentumBalanceSolver(CBCSolver):
         if isinstance(u0, str):
             info("Loading initial displacement from file.")
             file_name = u0
-            u0 = Function(vector)
+            u0 = Function(vector_space)
             _u0 = loadtxt(file_name)[:]
-            u0.vector()[0:len(_u0)] = _u0[:]
-            #u0.vector() = _u0
+            u0.vector().array()[:] = _u0[:]
         if isinstance(v0, str):
             info("Loading initial velocity from file.")
             file_name = v0
-            v0 = Function(vector)
+            v0 = Function(vector_vector)
             _v0 = loadtxt(file_name)[:]
             v0.vector()[0:len(_v0)] = _v0[:]
 
@@ -356,12 +356,12 @@ class CG1MomentumBalanceSolver(CBCSolver):
         dirichlet_values = problem.dirichlet_values()
         bcu = create_dirichlet_conditions(dirichlet_values,
                                           problem.dirichlet_boundaries(),
-                                          mixed_element.sub(0))
+                                          mixed_space.sub(0))
 
         # Functions
         xi, eta = split(V)
         u, v = split(U)
-        u_plot = Function(vector)
+        u_plot = Function(vector_space)
 
         # Project u0 and v0 into U0
         a_proj = inner(dU, V)*dx
@@ -375,7 +375,7 @@ class CG1MomentumBalanceSolver(CBCSolver):
 
         # If no body forces are specified, assume it is 0
         if B == []:
-            B = Constant((0,)*vector.mesh().geometry().dim())
+            B = Constant((0,)*vector_space.mesh().geometry().dim())
 
         # Evaluate displacements and velocities at mid points
         u_mid = 0.5*(u0 + u)
@@ -525,4 +525,4 @@ class CG1MomentumBalanceSolver(CBCSolver):
 
     def solution(self):
         "Return current solution values"
-        return self.U.split(True) 
+        return self.U.split(True)

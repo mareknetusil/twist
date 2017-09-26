@@ -6,7 +6,8 @@ from dolfin import *
 from cbc.common import CBCProblem
 from cbc.twist.solution_algorithms_static import StaticMomentumBalanceSolver_U, StaticMomentumBalanceSolver_UP
 from cbc.twist.solution_algorithms_dynamic import  MomentumBalanceSolver, CG1MomentumBalanceSolver
-from cbc.twist.solution_algorithms_static import default_parameters as solver_parameters
+from cbc.twist.solution_algorithms_static import default_parameters as solver_parameters_static
+from cbc.twist.solution_algorithms_dynamic import default_parameters as solver_parameters_dynamic
 from cbc.twist.kinematics import GreenLagrangeStrain
 from cbc.twist.coordinate_system import CartesianSystem
 from sys import exit
@@ -19,14 +20,14 @@ class StaticHyperelasticity(CBCProblem):
 
         # Set up parameters
         self.parameters = Parameters("problem_parameters")
-        self.parameters.add(solver_parameters())
+        self.parameters.add(solver_parameters_static())
         self.coordinate_system = coordinate_system
 
     def solve(self):
         """Solve for and return the computed displacement field, u"""
 
         # Create solver
-        
+
         formulation = self.parameters['solver_parameters']['problem_formulation']
         if formulation == 'displacement':
             self.solver = StaticMomentumBalanceSolver_U(self, self.parameters["solver_parameters"],\
@@ -74,7 +75,7 @@ class StaticHyperelasticity(CBCProblem):
     def first_pk_stress(self, u):
         """Return the first Piola-Kirchhoff stress tensor, P, given a
         displacement field, u"""
-        
+
         material_model = self.material_model()
         if isinstance(material_model, tuple):
             fpk_list = []
@@ -134,12 +135,13 @@ class Hyperelasticity(StaticHyperelasticity):
     """Base class for all quasistatic/dynamic hyperelasticity
     problems"""
 
-    def __init__(self):
+    def __init__(self, coordinate_system = None):
         """Create the hyperelasticity problem"""
 
         # Set up parameters
         self.parameters = Parameters("problem_parameters")
-        self.parameters.add(solver_parameters())
+        self.parameters.add(solver_parameters_dynamic())
+        self.coordinate_system = coordinate_system
 
         # Create solver later
         self.solver = None

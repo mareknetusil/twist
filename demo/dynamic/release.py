@@ -29,7 +29,7 @@ class Release(Hyperelasticity):
         """Return initial conditions for displacement field, u0, and
         velocity field, v0"""
         u0 = "twisty.txt"
-        v0 = Expression(("0.0", "0.0", "0.0"))
+        v0 = Expression(("0.0", "0.0", "0.0"), degree=0)
         return u0, v0
 
     def dirichlet_values(self):
@@ -41,7 +41,7 @@ class Release(Hyperelasticity):
     def material_model(self):
         mu    = 3.8461
         lmbda = 5.76
-        material = StVenantKirchhoff([mu, lmbda])
+        material = StVenantKirchhoff({'mu': mu, 'bulk':lmbda})
         return material
 
     def __str__(self):
