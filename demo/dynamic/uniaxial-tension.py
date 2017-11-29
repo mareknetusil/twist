@@ -20,8 +20,8 @@ class UniaxialTension(Hyperelasticity):
         return True
 
     def neumann_conditions(self):
-        pull_left   = Expression(("force*t", "0.0", "0.0"), force=-1.0, t=0.0)
-        pull_right  = Expression(("force*t", "0.0", "0.0"), force=1.0, t=0.0)
+        pull_left   = Expression(("force*t", "0.0", "0.0"), force=-1.0, t=0.0, degree=0)
+        pull_right  = Expression(("force*t", "0.0", "0.0"), force=1.0, t=0.0, degree=0)
         return [pull_right, pull_left]
 
     def neumann_boundaries(self):
@@ -32,7 +32,8 @@ class UniaxialTension(Hyperelasticity):
     def material_model(self):
         mu    = 3.8461
         lmbda = 5.76
-        material = LinearElastic([mu, lmbda])
+        #material = LinearElastic([mu, lmbda])
+        material = neoHookean({'half_nkT':mu, 'bulk':lmbda})
         return material
 
     def time_stepping(self):
@@ -43,6 +44,7 @@ class UniaxialTension(Hyperelasticity):
 
 # Setup the problem
 problem = UniaxialTension()
+problem.parameters['solver_parameters']['element_degree'] = 1
 
 # Solve the problem
 print problem

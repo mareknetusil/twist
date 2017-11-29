@@ -17,7 +17,7 @@ class Pull(StaticHyperelasticity):
 
     # Setting up dirichlet conditions and boundaries
     def dirichlet_values(self):
-        clamp = Expression(("0.0", "0.0", "0.0"))
+        clamp = Constant((0.0, 0.0, 0.0))
         return [clamp]
 
     def dirichlet_boundaries(self):

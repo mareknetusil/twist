@@ -28,7 +28,7 @@ class Release(Hyperelasticity):
     def initial_conditions(self):
         """Return initial conditions for displacement field, u0, and
         velocity field, v0"""
-        u0 = "twisty.txt"
+        u0 = "saved_u.xml"
         v0 = Expression(("0.0", "0.0", "0.0"), degree=0)
         return u0, v0
 
@@ -39,9 +39,9 @@ class Release(Hyperelasticity):
         return ["x[0] == 0.0"]
 
     def material_model(self):
-        mu    = 3.8461
-        lmbda = 5.76
-        material = StVenantKirchhoff({'mu': mu, 'bulk':lmbda})
+        mu    = 1e3
+        lmbda = 1e3
+        material = neoHookean({'half_nkT': mu, 'bulk':lmbda})
         return material
 
     def __str__(self):
@@ -49,6 +49,8 @@ class Release(Hyperelasticity):
 
 # Setup and solve problem
 problem = Release()
-print problem
+problem.parameters['solver_parameters']['element_degree'] = 1
+problem.parameters['solver_parameters']['save_solution'] = False 
+print(problem)
 problem.solve()
 interactive()

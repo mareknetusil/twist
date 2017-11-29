@@ -23,7 +23,7 @@ class FishyFlow(Hyperelasticity):
         return "CG1"
 
     def neumann_conditions(self):
-        flow_push = Expression(("force", "0.0"), force=0.05)
+        flow_push = Expression(("force", "0.0"), force=0.05, degree=0)
         return [flow_push]
 
     def neumann_boundaries(self):
@@ -33,7 +33,8 @@ class FishyFlow(Hyperelasticity):
     def material_model(self):
         mu    = 30.8461/5.0
         lmbda = 50.76/5.0
-        material = StVenantKirchhoff([mu, lmbda])
+        #material = StVenantKirchhoff([mu, lmbda])
+        material = neoHookean({'half_nkT':mu, 'bulk':lmbda})
         return material
 
     def __str__(self):
@@ -41,6 +42,7 @@ class FishyFlow(Hyperelasticity):
 
 # Setup and solve problem
 problem = FishyFlow()
+problem.parameters['solver_parameters']['element_degree'] = 1
 print problem
 problem.solve()
 interactive()

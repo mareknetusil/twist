@@ -20,7 +20,7 @@ class Gravity(Hyperelasticity):
         return "CG1"
 
     def dirichlet_values(self):
-        clamp = Expression(("0.0", "0.0", "0.0"))
+        clamp = Constant((0.0, 0.0, 0.0))
         return [clamp, clamp]
 
     def dirichlet_boundaries(self):
@@ -29,7 +29,7 @@ class Gravity(Hyperelasticity):
         return [left, right]
 
     def body_force(self):
-        B = Expression(("0.0", "0.0", "g*t"), g=-9.81, t=0.0)
+        B = Expression(("0.0", "0.0", "g*t"), g=-9.81, t=0.0, degree=0)
         return B
 
     def material_model(self):
@@ -37,7 +37,8 @@ class Gravity(Hyperelasticity):
         # varying fields. For example,
         mu       = 3.8461
         lmbda    = 5.75
-        material = StVenantKirchhoff([mu, lmbda])
+        #material = StVenantKirchhoff([mu, lmbda])
+        material = neoHookean({'half_nkT':mu, 'bulk':lmbda})
         return material
 
     def __str__(self):
@@ -45,6 +46,7 @@ class Gravity(Hyperelasticity):
 
 # Setup the problem
 gravity = Gravity()
+gravity.parameters['solver_parameters']['element_degree'] = 1
 
 # Solve the problem
 print gravity

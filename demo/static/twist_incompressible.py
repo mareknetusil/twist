@@ -14,11 +14,11 @@ class Twist(StaticHyperelasticity):
 
     # Setting up dirichlet conditions and boundaries
     def dirichlet_values(self):
-        clamp = Expression(("0.0", "0.0", "0.0"))
+        clamp = Constant((0.0, 0.0, 0.0))
         twist = Expression(("0.0",
                             "y0 + (x[1] - y0) * cos(theta) - (x[2] - z0) * sin(theta) - x[1]",
                             "z0 + (x[1] - y0) * sin(theta) + (x[2] - z0) * cos(theta) - x[2]"),
-                           y0=0.5, z0=0.5, theta=pi/3)
+                           y0=0.5, z0=0.5, theta=pi/3, degree=3)
         return [clamp, twist]
 
     def dirichlet_boundaries(self):
@@ -28,7 +28,7 @@ class Twist(StaticHyperelasticity):
 
 
     # List of material models
-    def material_model(self, mesh):
+    def material_model(self):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
         mu       = 3.8461
@@ -68,7 +68,7 @@ class Twist(StaticHyperelasticity):
 # Setup the problem
 twist = Twist()
 twist.name_method("UP FORMULATION BASED METHOD")
-#twist.parameters['solver_parameters']['problem_formulation'] = 'incompressible'
+twist.parameters['solver_parameters']['problem_formulation'] = 'incompressible'
 
 # Solve the problem
 print twist
