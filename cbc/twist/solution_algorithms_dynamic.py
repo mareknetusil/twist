@@ -19,13 +19,13 @@ def default_parameters():
     p.add("plot_solution", True)
     p.add("save_solution", False)
     p.add("store_solution_data", False)
-    p.add("element_degree",1)
+    p.add("element_degree",2)
     p.add("problem_formulation",'displacement')
-    rel = Parameters("relaxation_parameter")
+    rel = Parameters("newton_solver")
     rel.add("value", 1.0)
     rel.add("adaptive", True)
+    rel.add("loading_number_of_steps", 1)
     p.add(rel)
-    p.add("loading_number_of_steps", 1)
 
     return p
 
@@ -318,8 +318,10 @@ class CG1MomentumBalanceSolver(CBCSolver):
 
         # Define function spaces
         element_degree = parameters["element_degree"]
-        scalar = FiniteElement("CG", mesh.ufl_cell(), element_degree)
+        #scalar = FiniteElement("CG", mesh.ufl_cell(), element_degree)
         vector = VectorElement("CG", mesh.ufl_cell(), element_degree)
+        
+        
 
         vector_space = FunctionSpace(mesh, vector)
         mixed_space = FunctionSpace(mesh, vector*vector)
@@ -333,24 +335,20 @@ class CG1MomentumBalanceSolver(CBCSolver):
 
         # If no initial conditions are specified, assume they are 0
         if u0 == []:
-            u0 = Constant((0,)*vector.mesh().geometry().dim())
+            u0 = Constant((0,)*vector_space.mesh().geometry().dim())
         if v0 == []:
-            v0 = Constant((0,)*vector.mesh().geometry().dim())
+            v0 = Constant((0,)*vector_space.mesh().geometry().dim())
 
         # If either are text strings, assume those are file names and
         # load conditions from those files
         if isinstance(u0, str):
             info("Loading initial displacement from file.")
             file_name = u0
-            u0 = Function(vector_space)
-            _u0 = loadtxt(file_name)[:]
-            u0.vector().array()[:] = _u0[:]
+            u0 = Function(vector_space, file_name)
         if isinstance(v0, str):
             info("Loading initial velocity from file.")
             file_name = v0
-            v0 = Function(vector_vector)
-            _v0 = loadtxt(file_name)[:]
-            v0.vector()[0:len(_v0)] = _v0[:]
+            v0 = Function(vector_space, file_name)
 
         # Create boundary conditions
         dirichlet_values = problem.dirichlet_values()
@@ -475,11 +473,13 @@ class CG1MomentumBalanceSolver(CBCSolver):
         self.dt = dt
         self.k.assign(dt)
 
-        problem = NonlinearVariationalProblem(self.L, self.U, self.bcu, self.a)
-        solver = NonlinearVariationalSolver(problem)
-        solver.parameters["newton_solver"]["absolute_tolerance"] = 1e-12
-        solver.parameters["newton_solver"]["relative_tolerance"] = 1e-12
-        solver.parameters["newton_solver"]["maximum_iterations"] = 100
+        #problem = NonlinearVariationalProblem(self.L, self.U, self.bcu, self.a)
+        #solver = NonlinearVariationalSolver(problem)
+        solver = AugmentedNewtonSolver(self.L, self.U, self.a, \
+                         self.bcu)
+        #solver.parameters["newton_solver"]["absolute_tolerance"] = 1e-12
+        #solver.parameters["newton_solver"]["relative_tolerance"] = 1e-12
+        #solver.parameters["newton_solver"]["maximum_iterations"] = 100
         solver.solve()
         return self.U.split(True)
 

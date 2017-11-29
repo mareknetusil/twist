@@ -137,7 +137,6 @@ class Hyperelasticity(StaticHyperelasticity):
 
     def __init__(self, coordinate_system = None):
         """Create the hyperelasticity problem"""
-
         # Set up parameters
         self.parameters = Parameters("problem_parameters")
         self.parameters.add(solver_parameters_dynamic())
