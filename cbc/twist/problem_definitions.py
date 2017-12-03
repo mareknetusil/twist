@@ -4,8 +4,8 @@ __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
 from cbc.common import CBCProblem
-from cbc.twist.solution_algorithms_static import StaticMomentumBalanceSolver_U, StaticMomentumBalanceSolver_UP
-from cbc.twist.solution_algorithms_dynamic import  MomentumBalanceSolver, CG1MomentumBalanceSolver
+from cbc.twist.solution_algorithms_static import StaticMomentumBalanceSolver_U
+from cbc.twist.solution_algorithms_dynamic import  CG1MomentumBalanceSolver
 from cbc.twist.solution_algorithms_static import default_parameters as solver_parameters_static
 from cbc.twist.solution_algorithms_dynamic import default_parameters as solver_parameters_dynamic
 from cbc.twist.kinematics import GreenLagrangeStrain
@@ -28,8 +28,9 @@ class StaticHyperelasticity(CBCProblem):
       formulation = self.parameters['solver_parameters']['problem_formulation']
       if formulation == 'displacement':
          self.solver = StaticMomentumBalanceSolver_U(self, self.parameters["solver_parameters"])
-      elif formulation == 'mixed_up':
-         self.solver = StaticMomentumBalanceSolver_UP(self, self.parameters['solver_parameters'])
+      else:
+         error("%s formulation not supported." % formulation)
+
 
       # Call solver
       return self.solver.solve()
@@ -235,8 +236,5 @@ class Hyperelasticity(StaticHyperelasticity):
       if scheme is "CG1":
          info("Using CG1 time-stepping.")
          self.solver = CG1MomentumBalanceSolver(self, self.parameters["solver_parameters"])
-      elif scheme is "HHT":
-         info("Using HHT time-stepping.")
-         self.solver = MomentumBalanceSolver(self, self.parameters["solver_parameters"])
       else:
          error("%s time-stepping scheme not supported." % str(self.time_stepping()))
