@@ -44,7 +44,7 @@ class UniaxialTension(Hyperelasticity):
 
 # Setup the problem
 problem = UniaxialTension()
-problem.parameters['solver_parameters']['element_degree'] = 1
+problem.parameters['element_degree'] = 1
 
 # Solve the problem
 print problem

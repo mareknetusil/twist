@@ -42,7 +42,7 @@ class FishyFlow(Hyperelasticity):
 
 # Setup and solve problem
 problem = FishyFlow()
-problem.parameters['solver_parameters']['element_degree'] = 1
+problem.parameters['element_degree'] = 1
 print problem
 problem.solve()
 interactive()

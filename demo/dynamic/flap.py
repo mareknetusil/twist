@@ -53,7 +53,7 @@ class Obstruction(Hyperelasticity):
 
 # Setup problem
 problem = Obstruction()
-problem.parameters['solver_parameters']['element_degree'] = 1
+problem.parameters['element_degree'] = 1
 
 # Solve problem
 print problem

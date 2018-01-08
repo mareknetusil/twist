@@ -79,7 +79,7 @@ class Pull(StaticHyperelasticity):
 # Setup the problem
 pull = Pull()
 pull.name_method("DISPLACEMENT BASED FORMULATION")
-#pull.parameters['solver_parameters']['problem_formulation'] = 'mixed_up'
+#pull.parameters['problem_formulation'] = 'mixed_up'
 
 # Solve the problem
 print pull

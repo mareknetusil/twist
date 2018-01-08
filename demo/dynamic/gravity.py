@@ -46,7 +46,7 @@ class Gravity(Hyperelasticity):
 
 # Setup the problem
 gravity = Gravity()
-gravity.parameters['solver_parameters']['element_degree'] = 1
+gravity.parameters['element_degree'] = 1
 
 # Solve the problem
 print gravity

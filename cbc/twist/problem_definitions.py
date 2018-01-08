@@ -18,16 +18,15 @@ class StaticHyperelasticity(CBCProblem):
       """Create the static hyperelasticity problem"""
 
       # Set up parameters
-      self.parameters = Parameters("problem_parameters")
-      self.parameters.add(solver_parameters_static())
+      self.parameters = solver_parameters_static()
 
    def solve(self):
       """Solve for and return the computed displacement field, u"""
 
       # Create solver
-      formulation = self.parameters['solver_parameters']['problem_formulation']
+      formulation = self.parameters['problem_formulation']
       if formulation == 'displacement':
-         self.solver = StaticMomentumBalanceSolver_U(self, self.parameters["solver_parameters"])
+         self.solver = StaticMomentumBalanceSolver_U(self, self.parameters)
       else:
          error("%s formulation not supported." % formulation)
 
@@ -134,8 +133,7 @@ class Hyperelasticity(StaticHyperelasticity):
    def __init__(self):
       """Create the hyperelasticity problem"""
       # Set up parameters
-      self.parameters = Parameters("problem_parameters")
-      self.parameters.add(solver_parameters_dynamic())
+      self.parameters = solver_parameters_dynamic()
 
       # Create solver later
       self.solver = None
@@ -147,7 +145,7 @@ class Hyperelasticity(StaticHyperelasticity):
       self._create_solver()
 
       # Update solver parameters
-      self.solver.parameters.update(self.parameters["solver_parameters"])
+      self.solver.parameters.update(self.parameters)
 
       # Call solver
       return self.solver.solve()
@@ -159,7 +157,7 @@ class Hyperelasticity(StaticHyperelasticity):
       self._create_solver()
 
       # Update solver parameters
-      self.solver.parameters.update(self.parameters["solver_parameters"])
+      self.solver.parameters.update(self.parameters)
 
       # Call solver
       return self.solver.step(dt)
@@ -235,6 +233,6 @@ class Hyperelasticity(StaticHyperelasticity):
       scheme = self.time_stepping()
       if scheme is "CG1":
          info("Using CG1 time-stepping.")
-         self.solver = CG1MomentumBalanceSolver(self, self.parameters["solver_parameters"])
+         self.solver = CG1MomentumBalanceSolver(self, self.parameters)
       else:
          error("%s time-stepping scheme not supported." % str(self.time_stepping()))
