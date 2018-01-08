@@ -49,8 +49,8 @@ class Release(Hyperelasticity):
 
 # Setup and solve problem
 problem = Release()
-problem.parameters['solver_parameters']['element_degree'] = 1
-problem.parameters['solver_parameters']['save_solution'] = False 
+problem.parameters['element_degree'] = 1
+problem.parameters['save_solution'] = False 
 print(problem)
 problem.solve()
 interactive()
