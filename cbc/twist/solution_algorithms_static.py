@@ -61,7 +61,8 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
       
       self.theta = Constant(1.0)
 
-      L1 = ElasticityDisplacementTerm(P, self.theta*B, vector.test_displacement)
+      L1 = HyperelasticityTerm(P, vector.test_displacement)
+      L1 += VolumeForceTerm(self.theta*B, vector.test_displacement)
 
       # Add contributions to the form from the Neumann boundary
       # conditions
