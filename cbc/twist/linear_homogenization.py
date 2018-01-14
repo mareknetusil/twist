@@ -37,6 +37,11 @@ class LinearHomogenization(CBCProblem):
     print "Periodic boundaries must be implemented"
     return None
 
+  def Pi_functions(i,j,dim):
+    val = ("0.0",)*dim
+    val[i] = "x[j]"
+    return Expression(val,j=j,degree=1)
+
   def correctors_chi(self, indxs = None):
     """Return \chi_ij corrector.
        For None return a list of all \chi"""
@@ -76,7 +81,10 @@ class LinearHomogenizationSolver(CBCSolver):
 
     #Equation
     A = problem.elasticity_tensor()
-    L1 = LinearElasticityTerm(A, vector.test_displacement)
+    L1 = LinearElasticityTerm(A, vector.unknown_displacement,
+           vector.test_displacement)
+    #L2 = LinearElasticityTerm(A, 
+
     #TODO:RHS and Pi operator
 
     #TODO:Linear variational solver
