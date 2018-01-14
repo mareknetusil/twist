@@ -4,7 +4,6 @@ __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
 from cbc.twist.kinematics import *
-from cbc.twist.coordinate_system import CartesianSystem
 from sys import exit
 
 class MaterialModel():

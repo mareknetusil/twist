@@ -1,6 +1,5 @@
 from dolfin import *
 from nonlinear_solver import *
-from cbc.twist.coordinate_system import *
 from cbc.twist.kinematics import *
 from cbc.common import *
 
