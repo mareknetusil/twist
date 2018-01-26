@@ -1,6 +1,7 @@
 from dolfin import *
 from cbc.common import CBCProblem
-from cbc.twist.solution_algorithms_blocks import FunctionSpace_U,
+from cbc.twist.solution_algorithms_blocks import FunctionSpace_U, \
+    LinearElasticityTerm
 import itertools
 
 
@@ -16,21 +17,21 @@ def default_parameters():
 
 
 class LinearHomogenization(CBCProblem):
-  
+
     def __init__(self):
         CBCProblem.__init__(self)
 
         self.parameters = default_parameters()
         self._correctors_chi = {}
         self.solver = None
-        self.indxs = (0,0)
+        self.indxs = (0, 0)
         self.dim = self.mesh().geometry().dim()
 
     def solve(self):
         self.solver = LinearHomogenizationSolver(self, self.parameters)
-        for (i,j) in itertools.product(range(dim), range(dim)):
-            self.indxs = (i,j)
-            self._correctors_chi[(i,j)] = self.solver.solve()
+        for (i, j) in itertools.product(range(self.dim), range(self.dim)):
+            self.indxs = (i, j)
+            self._correctors_chi[(i, j)] = self.solver.solve()
         return self._correctors_chi
 
     def elasticity_tensor(self):
@@ -42,11 +43,11 @@ class LinearHomogenization(CBCProblem):
            IMPLEMENTED BY A USER"""
 
     def Pi_functions(self, dim):
-        val = ("0.0",)*dim
+        val = ("0.0",) * dim
         val[self.indxs[0]] = "x[j]"
-        return Expression(val,j=self.indxs[1],degree=1)
+        return Expression(val, j=self.indxs[1], degree=1)
 
-    def correctors_chi(self, indxs = None):
+    def correctors_chi(self, indxs=None):
         """Return \chi_ij corrector.
            For None return a list of all \chi"""
         if self._correctors_chi is None:
@@ -54,9 +55,9 @@ class LinearHomogenization(CBCProblem):
 
         if indxs is None:
             return self._correctors_chi
-        return self._correctors_chi[(indxs[0],indxs[1])]
+        return self._correctors_chi[(indxs[0], indxs[1])]
 
-    def correctors_omega(self, indxs = None):
+    def correctors_omega(self, indxs=None):
         """Return \omega_ij corrector.
            For None return a list of all \omega"""
 
@@ -70,35 +71,35 @@ class LinearHomogenization(CBCProblem):
 
 class LinearHomogenizationSolver(CBCSolver):
     """Solves the linear homogenization equation"""
+
     def __init__(self, problem, parameters):
         """Initialise the solver"""
 
-        #Define function spaces
+        # Define function spaces
         element_degree = parameters['element_degree']
         pbc = problem.periodic_boundaries()
 
         vector = FunctionSpace_U(problem.mesh(), 'CG', element_degree, pbc)
         print "Number of DOFs = %d" % vector.space.dim()
 
-        #Equation
+        # Equation
         A = problem.elasticity_tensor()
-        L1 = LinearElasticityTerm(A, vector.unknown_displacement,
-               vector.test_displacement)
-        L2 = LinearElasticityTerm(A, problem.Pi_functions(),
-                vector.test_displacement)
+        a = LinearElasticityTerm(A, vector.unknown_displacement,
+                                 vector.test_displacement)
+        L = LinearElasticityTerm(A, problem.Pi_functions(),
+                                 vector.test_displacement)
 
-        #TODO:RHS and Pi operator
-
-        #TODO:Linear variational solver
+        problem = LinearVariationalProblem(a, L, vector.unknown_displacement)
+        solver = LinearVariationalSolver(problem)
 
         self.function_space = vector
         self.parameters = parameters
         self.mesh = problem.mesh()
         self.equation = solver
 
-    def solve(self, indxs):
+    def solve(self):
         """Solve the homogenization problem"""
-        #TODO:Implement
+        # TODO:Implement
         self.equation.solve()
         chi = self.functionspace.unknown_displacement
         return chi
