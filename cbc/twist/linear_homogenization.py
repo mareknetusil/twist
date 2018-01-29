@@ -1,5 +1,6 @@
 from dolfin import *
 from cbc.common import CBCProblem
+from cbc.common import CBCSolver
 from cbc.twist.solution_algorithms_blocks import FunctionSpace_U, \
     LinearElasticityTerm
 import itertools
@@ -25,9 +26,11 @@ class LinearHomogenization(CBCProblem):
         self._correctors_chi = {}
         self.solver = None
         self.indxs = (0, 0)
-        self.dim = self.mesh().geometry().dim()
+        self.dim = None
+        self.Pi_functions = None
 
     def solve(self):
+        self.dim = self.mesh().geometry().dim()
         self.solver = LinearHomogenizationSolver(self, self.parameters)
         for (i, j) in itertools.product(range(self.dim), range(self.dim)):
             self.indxs = (i, j)
@@ -42,10 +45,13 @@ class LinearHomogenization(CBCProblem):
         """Return the periodic boundary conditions.
            IMPLEMENTED BY A USER"""
 
-    def Pi_functions(self, dim):
-        val = ("0.0",) * dim
-        val[self.indxs[0]] = "x[j]"
-        return Expression(val, j=self.indxs[1], degree=1)
+    def generate_Pi_functions(self):
+        self.Pi_functions = []
+        for (i, j) in itertools.product(range(self.dim), range(self.dim)):
+            val = ["0.0", ] * self.dim
+            val[i] = "x[j]"
+            Pi_ij = Expression(val, j=j, degree=1)
+            self.Pi_functions.append(Pi_ij)
 
     def correctors_chi(self, indxs=None):
         """Return \chi_ij corrector.
@@ -78,26 +84,33 @@ class LinearHomogenizationSolver(CBCSolver):
         # Define function spaces
         element_degree = parameters['element_degree']
         pbc = problem.periodic_boundaries()
-
         vector = FunctionSpace_U(problem.mesh(), 'CG', element_degree, pbc)
         print "Number of DOFs = %d" % vector.space.dim()
 
-        # Equation
-        A = problem.elasticity_tensor()
-        a = LinearElasticityTerm(A, vector.unknown_displacement,
-                                 vector.test_displacement)
-        L = LinearElasticityTerm(A, problem.Pi_functions(),
-                                 vector.test_displacement)
+        problem.generate_Pi_functions()
 
-        problem = LinearVariationalProblem(a, L, vector.unknown_displacement)
-        solver = LinearVariationalSolver(problem)
-
-        self.function_space = vector
+        self.f_space = vector
         self.parameters = parameters
         self.mesh = problem.mesh()
-        self.equation = solver
+        self.equation = None
+        self.problem = problem
 
     def solve(self):
+
+        # Equation
+        A = self.problem.elasticity_tensor()
+        a = LinearElasticityTerm(A, self.f_space.unknown_displacement,
+                                 self.f_space.test_displacement)
+        (i, j) = self.problem.indxs
+        Pi = self.problem.Pi_functions[2*i + j]
+        Pi_function = project(Pi, self.f_space.space, mesh=self.problem.mesh())
+        L = LinearElasticityTerm(A, Pi_function,
+                                 self.f_space.test_displacement)
+
+        problem = LinearVariationalProblem(a, L, self.f_space.unknown_displacement)
+        solver = LinearVariationalSolver(problem)
+        self.equation = solver
+
         """Solve the homogenization problem"""
         # TODO:Implement
         self.equation.solve()

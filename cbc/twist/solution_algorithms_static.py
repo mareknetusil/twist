@@ -54,11 +54,11 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
       B = problem.body_force()
       P  = problem.first_pk_stress(vector.unknown_displacement)
 
-      
+
       # If no body forces are specified, assume it is 0
       if B == []:
          B = Constant((0,)*vector.test_displacement.geometric_dimension())
-      
+
       self.theta = Constant(1.0)
 
       L1 = HyperelasticityTerm(P, vector.test_displacement)
@@ -67,7 +67,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
       # Add contributions to the form from the Neumann boundary
       # conditions
       neumann_conditions = problem.neumann_conditions()
-      
+
 
       # If no Neumann conditions are specified, assume it is 0
       if neumann_conditions == []:
