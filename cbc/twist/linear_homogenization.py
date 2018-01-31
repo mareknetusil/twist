@@ -2,7 +2,7 @@ from dolfin import *
 from cbc.common import CBCProblem
 from cbc.common import CBCSolver
 from cbc.twist.solution_algorithms_blocks import FunctionSpace_U, \
-    LinearElasticityTerm
+    LinearElasticityTerm, homogenization_rhs, linear_pk_stress
 import itertools
 
 
@@ -61,7 +61,7 @@ class LinearHomogenization(CBCProblem):
 
         if indxs is None:
             return self._correctors_chi
-        return self._correctors_chi[(indxs[0], indxs[1])]
+        return self._correctors_chi[indxs]
 
     def correctors_omega(self, indxs=None):
         """Return \omega_ij corrector.
@@ -99,20 +99,22 @@ class LinearHomogenizationSolver(CBCSolver):
 
         # Equation
         A = self.problem.elasticity_tensor()
-        a = LinearElasticityTerm(A, self.f_space.unknown_displacement,
-                                 self.f_space.test_displacement)
-        (i, j) = self.problem.indxs
-        Pi = self.problem.Pi_functions[2*i + j]
-        Pi_function = project(Pi, self.f_space.space, mesh=self.problem.mesh())
-        L = LinearElasticityTerm(A, Pi_function,
-                                 self.f_space.test_displacement)
+        # a = LinearElasticityTerm(A, self.f_space.trial_displacement,
+        #                          self.f_space.test_displacement)
+        u = TrialFunction(self.f_space.space)
+        v = TestFunction(self.f_space.space)
+        P = linear_pk_stress(A, u)
+        a = inner(P, grad(v))*dx
 
-        problem = LinearVariationalProblem(a, L, self.f_space.unknown_displacement)
+        (i, j) = self.problem.indxs
+        A_mn = homogenization_rhs(A, 0, 0)
+        L = inner(A_mn, grad(self.f_space.test_displacement))*dx
+
+        u = self.f_space.unknown_displacement
+        problem = LinearVariationalProblem(a, L, u)
         solver = LinearVariationalSolver(problem)
         self.equation = solver
 
         """Solve the homogenization problem"""
-        # TODO:Implement
-        self.equation.solve()
-        chi = self.functionspace.unknown_displacement
+        chi = self.f_space.unknown_displacement
         return chi

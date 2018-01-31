@@ -4,23 +4,32 @@ from cbc.twist.kinematics import *
 from cbc.common import *
 
 
-def tensor_matrix(A, b):
+def linear_pk_stress(A, u):
     i, j, k, l = indices(4)
-    C_ij = A[i, j, k, l] * b[k, l]
-    C = as_tensor(C_ij, (i, j))
-    return C
+    P_ij = A[i, j, k, l] * grad(u)[k, l]
+    P = as_tensor(P_ij, (i, j))
+    return P
+
+
+def homogenization_rhs(A, m, n):
+    i, j = indices(2)
+    rhs_ij = A[i, j, m, n]
+    retval = as_tensor(rhs_ij, (i, j))
+    return retval
 
 
 def LinearElasticityTerm(A, u, v):
     L = inner(Constant((0.0,) * v.geometric_dimension()), v) * dx
     if isinstance(A, tuple):
-        A_list, subdomain_list = A
+        A_list, subdomains_list = A
         for (index, A) in enumerate(A_list):
             new_dx = Measure('dx')(subdomain_data=subdomains_list[index][0])
-            L += inner(A * Grad(u), Grad_Cyl(v)) * new_dx(
+            P = linear_pk_stress(A, u)
+            L += inner(P, grad(v)) * new_dx(
                 subdomains_list[index][1])
     else:
-        L += inner(tensor_matrix(A, Grad(u)), Grad_Cyl(v)) * dx
+        P = linear_pk_stress(A, u)
+        L += inner(P, grad(v)) * dx
     return L
 
 
@@ -140,7 +149,7 @@ class FunctionSpace_UP():
 
     @property
     def test_vector(self):
-        return (self._test_displacement, self._test_pressure)
+        return self._test_displacement, self._test_pressure
 
     @property
     def trial_vector(self):
