@@ -103,8 +103,8 @@ class LinearHomogenizationSolver(CBCSolver):
         #                          self.f_space.test_displacement)
         u = TrialFunction(self.f_space.space)
         v = TestFunction(self.f_space.space)
-        P = linear_pk_stress(A, u)
-        a = inner(P, grad(v))*dx
+        P = linear_pk_stress(A, self.f_space.trial_displacement)
+        a = inner(P, grad(self.f_space.test_displacement))*dx
 
         (i, j) = self.problem.indxs
         A_mn = homogenization_rhs(A, 0, 0)
