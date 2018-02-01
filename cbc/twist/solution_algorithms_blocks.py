@@ -12,24 +12,35 @@ def linear_pk_stress(A, u):
 
 
 def homogenization_rhs(A, m, n):
-    i, j = indices(2)
-    rhs_ij = A[i, j, m, n]
-    retval = as_tensor(rhs_ij, (i, j))
-    return retval
+    if isinstance(A, tuple):
+        A_list, subdomains_list = A
+        rhs_list = []
+        for (index, A_i) in enumerate(A_list):
+            i, j = indices(2)
+            rhs_ij = A_i[i, j, m, n]
+            retval = as_tensor(rhs_ij, (i, j))
+            rhs_list.append(retval)
+        retval_tuple = (rhs_list, subdomains_list)
+        return retval_tuple
+    else:
+        i, j = indices(2)
+        rhs_ij = A[i, j, m, n]
+        retval = as_tensor(rhs_ij, (i, j))
+        return retval
 
 
 def LinearElasticityTerm(A, u, v):
-    L = inner(Constant((0.0,) * v.geometric_dimension()), v) * dx
+    L = inner(Constant((0.0))*u, v) * dx
     if isinstance(A, tuple):
         A_list, subdomains_list = A
-        for (index, A) in enumerate(A_list):
+        for (index, A_i) in enumerate(A_list):
             new_dx = Measure('dx')(subdomain_data=subdomains_list[index][0])
-            P = linear_pk_stress(A, u)
+            P = linear_pk_stress(A_i, u)
             L += inner(P, grad(v)) * new_dx(
                 subdomains_list[index][1])
     else:
         P = linear_pk_stress(A, u)
-        L += inner(P, grad(v)) * dx
+        L = inner(P, grad(v)) * dx
     return L
 
 

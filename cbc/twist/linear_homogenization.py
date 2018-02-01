@@ -2,7 +2,7 @@ from dolfin import *
 from cbc.common import CBCProblem
 from cbc.common import CBCSolver
 from cbc.twist.solution_algorithms_blocks import FunctionSpace_U, \
-    LinearElasticityTerm, homogenization_rhs, linear_pk_stress
+    LinearElasticityTerm, homogenization_rhs, HyperelasticityTerm
 import itertools
 
 
@@ -99,22 +99,20 @@ class LinearHomogenizationSolver(CBCSolver):
 
         # Equation
         A = self.problem.elasticity_tensor()
-        # a = LinearElasticityTerm(A, self.f_space.trial_displacement,
-        #                          self.f_space.test_displacement)
-        u = TrialFunction(self.f_space.space)
-        v = TestFunction(self.f_space.space)
-        P = linear_pk_stress(A, self.f_space.trial_displacement)
-        a = inner(P, grad(self.f_space.test_displacement))*dx
+        a = LinearElasticityTerm(A, self.f_space.trial_displacement,
+                                  self.f_space.test_displacement)
 
         (i, j) = self.problem.indxs
-        A_mn = homogenization_rhs(A, 0, 0)
-        L = inner(A_mn, grad(self.f_space.test_displacement))*dx
+        A_mn = homogenization_rhs(A, i, j)
+        L = HyperelasticityTerm(A_mn, self.f_space.test_displacement)
 
         u = self.f_space.unknown_displacement
         problem = LinearVariationalProblem(a, L, u)
         solver = LinearVariationalSolver(problem)
         self.equation = solver
+        solver.solve()
 
         """Solve the homogenization problem"""
-        chi = self.f_space.unknown_displacement
+
+        chi = self.f_space.unknown_displacement.copy(deepcopy=True)
         return chi
