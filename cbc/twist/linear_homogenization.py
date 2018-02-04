@@ -28,6 +28,7 @@ class LinearHomogenization(CBCProblem):
         self.indxs = (0, 0)
         self.dim = None
         self.Pi_functions = None
+        self._volume = None
 
     def solve(self):
         self.dim = self.mesh().geometry().dim()
@@ -44,6 +45,14 @@ class LinearHomogenization(CBCProblem):
     def periodic_boundaries(self):
         """Return the periodic boundary conditions.
            IMPLEMENTED BY A USER"""
+
+    def volume(self):
+        if self._volume is None:
+            V = FunctionSpace(self._mesh, 'DG', 0)
+            One = project(Constant(1.0), V)
+            self._volume = assemble(One*dx)
+        return self._volume
+
 
     def generate_Pi_functions(self):
         self.Pi_functions = []
@@ -62,6 +71,41 @@ class LinearHomogenization(CBCProblem):
         if indxs is None:
             return self._correctors_chi
         return self._correctors_chi[indxs]
+
+    def averaged_elasticity_tensor(self):
+        A = self.elasticity_tensor()
+        A_av = {}
+        V = FunctionSpace(self._mesh, 'CG', 1)
+        for (i,j,k,l) in itertools.product(range(2), range(2), range(2), range(2)):
+            A_ijkl = project(A[i,j,k,l], V)
+            A_av[(i,j,k,l)] = assemble(A_ijkl*dx)/self.volume()
+
+        B = [[[[A_av[(i,j,k,l)] for l in range(2)] for k in range(2)]
+              for j in range(2)] for i in range(2)]
+        return as_tensor(B)
+
+    def corrector_elasticity_tensor(self):
+        A = self.elasticity_tensor()
+        A_corr = {}
+        V = FunctionSpace(self._mesh, 'CG', 1)
+        for (i,j,k,l) in itertools.product(range(2), range(2), range(2), range(2)):
+            m, n = indices(2)
+            chi_kl = self.correctors_chi((k,l))
+            P_ijkl = as_tensor(A[i,j,m,n]*grad(chi_kl)[m,n])
+            A_corr[(i,j,k,l)] = assemble(P_ijkl*dx)/self.volume()
+
+        B = [[[[A_corr[(i,j,k,l)] for l in range(2)] for k in range(2)]
+              for j in range(2)] for i in range(2)]
+        return as_tensor(B)
+
+    def homogenized_elasticity_tensor(self):
+        A_av = self.averaged_elasticity_tensor()
+        A_corr = self.corrector_elasticity_tensor()
+        i,j,k,l = indices(4)
+        A0_ijkl = A_av[i,j,k,l] - A_corr[i,j,k,l]
+        A0 = as_tensor(A0_ijkl, (i,j,k,l))
+        return A0
+
 
     def correctors_omega(self, indxs=None):
         """Return \omega_ij corrector.
