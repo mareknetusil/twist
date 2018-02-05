@@ -102,9 +102,14 @@ class LinearHomogenization(CBCProblem):
         A_av = self.averaged_elasticity_tensor()
         A_corr = self.corrector_elasticity_tensor()
         i,j,k,l = indices(4)
-        A0_ijkl = A_av[i,j,k,l] - A_corr[i,j,k,l]
-        A0 = as_tensor(A0_ijkl, (i,j,k,l))
-        return A0
+        A0 = [[[[A_av[i,j,k,l] - A_corr[i,j,k,l] for l in range(2)] for k in range(2)]
+                for j in range(2)] for i in range(2)]
+        return as_tensor(A0)
+
+    def print_elasticity_tensor(self, A):
+        indx = [(0,0), (1,1), (0,1)]
+        retval = as_matrix([[A[i[0],i[1],j[0],j[1]] for j in indx] for i in indx])
+        return retval
 
 
     def correctors_omega(self, indxs=None):
@@ -140,6 +145,7 @@ class LinearHomogenizationSolver(CBCSolver):
         self.problem = problem
 
     def solve(self):
+        """Solve the homogenization problem"""
 
         # Equation
         A = self.problem.elasticity_tensor()
@@ -155,8 +161,6 @@ class LinearHomogenizationSolver(CBCSolver):
         solver = LinearVariationalSolver(problem)
         self.equation = solver
         solver.solve()
-
-        """Solve the homogenization problem"""
 
         chi = self.f_space.unknown_displacement.copy(deepcopy=True)
         return chi
