@@ -59,12 +59,34 @@ class neoHookean(MaterialModel):
         #TODO: Model should be different for the U and UP formulation
 
         J = sqrt(self.I3)
-        I1bar = J**(-2.0/3.0)*self.I1
         I1 = self.I1
 
         half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
-        return half_nkT*(I1bar - 3.0) + bulk*(J - 1.0)**2
-        #return half_nkT*(I1bar - 3.0)    
+        # return half_nkT*(I1bar - 3.0) + bulk*(J - 1.0)**2
+        #return half_nkT*(I1bar - 3.0)
+        return half_nkT*(I1 - 3.0 - 2*ln(J)) + 0.5*bulk*(ln(J))**2
+
+    def SecondElasticityTensor(self, u):
+        C_inv = inv(self.C)
+        half_nkT, bulk = self.parameters['half_nkT'], self.parameters['bulk']
+
+        i, j, k, l = indices(4)
+        c_ijkl = bulk*C_inv[i,j]*C_inv[k,l] - 2*(half_nkT - 0.5*bulk*ln(self.I3)) \
+                        *0.5*(C_inv[i,k]*C_inv[j,l] + C_inv[i,l]*C_inv[j,k])
+        c = as_tensor(c_ijkl, (i,j,k,l))
+        return c
+
+    def FirstElasticityTensor(self, u):
+        self._construct_local_kinematics(u)
+        F = self.F
+        I = self.I
+        S = self.SecondPiolaKirchhoffStress(u)
+        c = self.SecondElasticityTensor(u)
+
+        i, j, k, l, m, n = indices(6)
+        A_ijkl = I[i,k]*S[j,l] + F[i,m]*c[m,j,l,n]*F[k,n]
+        A = as_tensor(A_ijkl, (i,j,k,l))
+        return A
 
 
 class Isihara(MaterialModel):
