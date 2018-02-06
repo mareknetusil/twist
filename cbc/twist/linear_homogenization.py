@@ -164,3 +164,15 @@ class LinearHomogenizationSolver(CBCSolver):
 
         chi = self.f_space.unknown_displacement.copy(deepcopy=True)
         return chi
+
+def function_from_cell_function(values, subdomains):
+    import numpy
+    helper = numpy.asarray(subdomains.array(), dtype=numpy.int32)
+    mesh = subdomains.mesh()
+    V = FunctionSpace(mesh, 'DG', 0)
+    dm = V.dofmap()
+    for cell in cells(mesh):
+        helper[dm.cell_dofs(cell.index())] = subdomains[cell]
+    u = Function(V)
+    u.vector()[:] = numpy.choose(helper, values)
+    return u
