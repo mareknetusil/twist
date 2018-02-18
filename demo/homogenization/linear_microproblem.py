@@ -27,7 +27,6 @@ class LinearMicroProblem(LinearHomogenization):
         n = 80
         self._mesh = UnitSquareMesh(n, n)
         self._pbc = PeriodicBoundary()
-        self._A = self.create_elasticity_tensor()
 
     def mesh(self):
         return self._mesh
@@ -38,10 +37,10 @@ class LinearMicroProblem(LinearHomogenization):
     def periodic_boundaries(self):
         return self._pbc
 
-    def create_elasticity_tensor(self):
+    def create_elasticity_tensor(self, u):
         I = Identity(2)
-        lmbda = 1e5
-        mu = [1e3, 1e6]
+        lmbda = 1e4
+        mu = [1e3, 1e4]
         # mu = [1e5, 1e3]
         mu_const = 1e3
 
@@ -52,52 +51,59 @@ class LinearMicroProblem(LinearHomogenization):
                                         pow(x[1] - 0.5, 2) < 0.04)
         right.mark(subdomains, 1)
 
-        W = VectorFunctionSpace(self._mesh, 'DG', 0)
-        u0 = project(Constant((0.0,0.0)), W)
+        # W = VectorFunctionSpace(self._mesh, 'DG', 0)
+        # u0 = project(Constant((0.0,0.0)), W)
 
         # refactorize this into separate function
         mu_f = function_from_cell_function(mu, subdomains)
         self.material = neoHookean({'half_nkT': mu_f, 'bulk': lmbda})
         # self.material = neoHookean({'half_nkT': mu_const, 'bulk': lmbda})
-        A = self.material.FirstElasticityTensor(u0)
+        A = self.material.FirstElasticityTensor(u)
         # i, j, k, l = indices(4)
         # I = Identity(2)
         # A_ijkl = lmbda*I[i,j]*I[k,l] - mu_f*(I[i,k]*I[j,l] + I[i,l]*I[j,k])
         # A = as_tensor(A_ijkl, (i,j,k,l))
 
         self.subdomains = subdomains
+        self._A = A
         return A
 
 linHom = LinearMicroProblem()
-linHom.solve()
 
-plot(linHom.correctors_chi((0,0)), interactive=True, mode='displacement',
-     title='chi_00')
-plot(linHom.correctors_chi((1,0)), interactive=True, mode='displacement',
-     title='chi_01')
-plot(linHom.correctors_chi((0,1)), interactive=True, mode='displacement',
-     title='chi_10')
-plot(linHom.correctors_chi((1,1)), interactive=True, mode='displacement',
-     title='chi_11')
-
-plot(linHom.subdomains, interactive=True, title='subdomains')
-
-B_av = linHom.averaged_elasticity_tensor()
-print "B_av: ", linHom.print_elasticity_tensor(B_av)
-B_corr = linHom.corrector_elasticity_tensor()
-print "B_corr: ", linHom.print_elasticity_tensor(B_corr)
-B = linHom.homogenized_elasticity_tensor()
-print "B: ", linHom.print_elasticity_tensor(B)
-
-# W = VectorFunctionSpace(linHom.mesh(), 'DG', 0)
 V = VectorFunctionSpace(linHom.mesh(), 'CG', 1)
-# u0 = project(Expression(("x[0]*(lmbda-1.0)","x[1]*(1.0/lmbda - 1.0)"),
-#                         lmbda = 1.5, degree=1), V)
-u0 = project(Expression(("x[0]*(1.0/lmbda-1.0)","x[1]*(lmbda - 1.0)"),
-                        lmbda = 1.2, degree=1), V)
-u1 = linHom.displacement_correction(u0)
-plot(u1, interactive=True, mode='displacement', title='u_1')
-plot(u0 + u1, interactive=True, mode='displacement', title='u_0 + u_1')
+u0_exp = Expression(("x[0]*(lmbda-1.0)","x[1]*(1.0/lmbda - 1.0)"),
+                        lmbda = 1.0, degree=1)
+u0 = project(u0_exp, V)
+linHom.create_elasticity_tensor(u0)
+
+for t in range(10):
+    linHom.solve()
+
+    plot(linHom.correctors_chi((0,0)), interactive=True, mode='displacement',
+         title='chi_00')
+    plot(linHom.correctors_chi((1,0)), interactive=True, mode='displacement',
+         title='chi_01')
+    plot(linHom.correctors_chi((0,1)), interactive=True, mode='displacement',
+         title='chi_10')
+    plot(linHom.correctors_chi((1,1)), interactive=True, mode='displacement',
+         title='chi_11')
+
+    # plot(linHom.subdomains, interactive=True, title='subdomains')
+    #
+    # B_av = linHom.averaged_elasticity_tensor()
+    # print "B_av: ", linHom.print_elasticity_tensor(B_av)
+    # B_corr = linHom.corrector_elasticity_tensor()
+    # print "B_corr: ", linHom.print_elasticity_tensor(B_corr)
+    # B = linHom.homogenized_elasticity_tensor()
+    # print "B: ", linHom.print_elasticity_tensor(B)
+
+    # W = VectorFunctionSpace(linHom.mesh(), 'DG', 0)
+    u0_exp.lmbda = 1.05 + 0.05*t
+    u0 = project(u0_exp, V)
+    u1 = linHom.displacement_correction(u0)
+    plot(u1, interactive=True, mode='displacement', title='u_1')
+    plot(u0 + u1, interactive=True, mode='displacement', title='u_0 + u_1')
+    linHom.create_elasticity_tensor(u0 + u1)
 
 # linHom.material._construct_local_kinematics(u0)
 # V = TensorFunctionSpace(linHom.mesh(), 'CG', 1, shape=(2,2))
