@@ -71,7 +71,8 @@ class neoHookean(MaterialModel):
         half_nkT, bulk = self.parameters['half_nkT'], self.parameters['bulk']
 
         i, j, k, l = indices(4)
-        c_ijkl = bulk*C_inv[i,j]*C_inv[k,l] - 2*(half_nkT - 0.5*bulk*ln(self.I3)) \
+        # What is a correct form? (+  or - 2*(half_nkT ...))
+        c_ijkl = bulk*C_inv[i,j]*C_inv[k,l] + 2*(half_nkT - 0.5*bulk*ln(self.I3)) \
                         *0.5*(C_inv[i,k]*C_inv[j,l] + C_inv[i,l]*C_inv[j,k])
         c = as_tensor(c_ijkl, (i,j,k,l))
         return c

@@ -40,13 +40,16 @@ class LinearMicroProblem(LinearHomogenization):
 
     def create_elasticity_tensor(self):
         I = Identity(2)
-        lmbda = 1e4
-        mu = [1e3, 2e3]
+        lmbda = 1e5
+        mu = [1e3, 1e6]
+        # mu = [1e5, 1e3]
         mu_const = 1e3
 
         subdomains = CellFunction('size_t', self._mesh)
         subdomains.set_all(0)
-        right = AutoSubDomain(lambda x: x[0] > .5)
+        # right = AutoSubDomain(lambda x: x[0] > .5)
+        right = AutoSubDomain(lambda x: pow(x[0] - 0.5, 2) +
+                                        pow(x[1] - 0.5, 2) < 0.04)
         right.mark(subdomains, 1)
 
         W = VectorFunctionSpace(self._mesh, 'DG', 0)
@@ -54,8 +57,8 @@ class LinearMicroProblem(LinearHomogenization):
 
         # refactorize this into separate function
         mu_f = function_from_cell_function(mu, subdomains)
-        # self.material = neoHookean({'half_nkT': mu_f, 'bulk': lmbda})
-        self.material = neoHookean({'half_nkT': mu_const, 'bulk': lmbda})
+        self.material = neoHookean({'half_nkT': mu_f, 'bulk': lmbda})
+        # self.material = neoHookean({'half_nkT': mu_const, 'bulk': lmbda})
         A = self.material.FirstElasticityTensor(u0)
         # i, j, k, l = indices(4)
         # I = Identity(2)
@@ -68,25 +71,33 @@ class LinearMicroProblem(LinearHomogenization):
 linHom = LinearMicroProblem()
 linHom.solve()
 
-# plot(linHom.correctors_chi((0,0)), interactive=True, mode='displacement')
-# plot(linHom.correctors_chi((1,0)), interactive=True, mode='displacement')
-# plot(linHom.correctors_chi((0,1)), interactive=True, mode='displacement')
-# plot(linHom.correctors_chi((1,1)), interactive=True, mode='displacement')
+plot(linHom.correctors_chi((0,0)), interactive=True, mode='displacement',
+     title='chi_00')
+plot(linHom.correctors_chi((1,0)), interactive=True, mode='displacement',
+     title='chi_01')
+plot(linHom.correctors_chi((0,1)), interactive=True, mode='displacement',
+     title='chi_10')
+plot(linHom.correctors_chi((1,1)), interactive=True, mode='displacement',
+     title='chi_11')
 
-# plot(linHom.subdomains, interactive=True)
+plot(linHom.subdomains, interactive=True, title='subdomains')
 
-# B_av = linHom.averaged_elasticity_tensor()
-# print "B_av: ", linHom.print_elasticity_tensor(B_av)
-# B_corr = linHom.corrector_elasticity_tensor()
-# print "B_corr: ", linHom.print_elasticity_tensor(B_corr)
-# B = linHom.homogenized_elasticity_tensor()
-# print "B: ", linHom.print_elasticity_tensor(B)
+B_av = linHom.averaged_elasticity_tensor()
+print "B_av: ", linHom.print_elasticity_tensor(B_av)
+B_corr = linHom.corrector_elasticity_tensor()
+print "B_corr: ", linHom.print_elasticity_tensor(B_corr)
+B = linHom.homogenized_elasticity_tensor()
+print "B: ", linHom.print_elasticity_tensor(B)
 
 # W = VectorFunctionSpace(linHom.mesh(), 'DG', 0)
 V = VectorFunctionSpace(linHom.mesh(), 'CG', 1)
-u0 = project(Constant((1.0,-2.0)), V)
+# u0 = project(Expression(("x[0]*(lmbda-1.0)","x[1]*(1.0/lmbda - 1.0)"),
+#                         lmbda = 1.5, degree=1), V)
+u0 = project(Expression(("x[0]*(1.0/lmbda-1.0)","x[1]*(lmbda - 1.0)"),
+                        lmbda = 1.2, degree=1), V)
 u1 = linHom.displacement_correction(u0)
-plot(u1, interactive=True, mode='displacement')
+plot(u1, interactive=True, mode='displacement', title='u_1')
+plot(u0 + u1, interactive=True, mode='displacement', title='u_0 + u_1')
 
 # linHom.material._construct_local_kinematics(u0)
 # V = TensorFunctionSpace(linHom.mesh(), 'CG', 1, shape=(2,2))

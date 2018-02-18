@@ -53,7 +53,6 @@ class LinearHomogenization(CBCProblem):
             self._volume = assemble(One*dx)
         return self._volume
 
-
     def generate_Pi_functions(self):
         self.Pi_functions = []
         for (i, j) in itertools.product(range(self.dim), range(self.dim)):
@@ -106,11 +105,11 @@ class LinearHomogenization(CBCProblem):
                 for j in range(2)] for i in range(2)]
         return as_tensor(A0)
 
-    def print_elasticity_tensor(self, A):
+    @staticmethod
+    def print_elasticity_tensor(A):
         indx = [(0,0), (1,1), (0,1)]
         retval = as_matrix([[A[i[0],i[1],j[0],j[1]] for j in indx] for i in indx])
         return retval
-
 
     def correctors_omega(self, indxs=None):
         """Return \omega_ij corrector.
@@ -172,6 +171,7 @@ class LinearHomogenizationSolver(CBCSolver):
 
         chi = self.f_space.unknown_displacement.copy(deepcopy=True)
         return chi
+
 
 def function_from_cell_function(values, subdomains):
     import numpy
