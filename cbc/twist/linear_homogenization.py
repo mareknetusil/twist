@@ -116,8 +116,16 @@ class LinearHomogenization(CBCProblem):
         """Return \omega_ij corrector.
            For None return a list of all \omega"""
 
-    def displacement_correction(self):
+    def displacement_correction(self, u_0):
         """Return u_1"""
+        Chi_mn = [[self.correctors_chi((m,n)) for n in range(2)] for m in range(2)]
+        Chi = as_tensor(Chi_mn)
+        m, n = indices(2)
+        u_1 = as_vector([- Chi[m,n,i]*grad(u_0)[m, n] for i in range(2)])
+
+        V = VectorFunctionSpace(self.mesh(), 'CG', 1)
+        u_1_fce = project(u_1, V)
+        return u_1_fce
 
     def __str__(self):
         """Return a short description of the problem"""
