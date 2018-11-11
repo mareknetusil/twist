@@ -80,7 +80,7 @@ def create_dirichlet_conditions(values, boundaries, function_space):
         else:
             temp_function_space = function_space
 
-        
+
          # Case 0: boundary is a string
         if isinstance(boundary, str):
             boundary = CompiledSubDomain(boundary)
@@ -117,5 +117,5 @@ def create_initial_condition(value, function_space):
         return create_initial_condition(Expression(value), function_space)
 
     # Try wrapping input as a Constant
-    print value
+    print(value)
     return create_initial_condition(Constant(value), function_space)

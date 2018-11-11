@@ -6,8 +6,8 @@ __license__  = "GNU GPL Version 3 or any later version"
 # Last changed: 2012-05-01
 
 from dolfin import *
-from nonlinear_solver import *
-from solution_algorithms_blocks import *
+from cbc.twist.nonlinear_solver import *
+from cbc.twist.solution_algorithms_blocks import *
 from cbc.common import *
 from cbc.common.utils import *
 from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian, Grad_Cyl
@@ -48,17 +48,17 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
       vector.create_dirichlet_conditions(problem)
 
       # Print DOFs
-      print "Number of DOFs = %d" % vector.space.dim()
+      print("Number of DOFs = %d" % vector.space.dim())
 
       # Driving forces
       B = problem.body_force()
       P  = problem.first_pk_stress(vector.unknown_displacement)
 
-      
+
       # If no body forces are specified, assume it is 0
       if B == []:
          B = Constant((0,)*vector.test_displacement.geometric_dimension())
-      
+
       self.theta = Constant(1.0)
 
       L1 = ElasticityDisplacementTerm(P, self.theta*B, vector.test_displacement)
@@ -66,7 +66,6 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
       # Add contributions to the form from the Neumann boundary
       # conditions
       neumann_conditions = problem.neumann_conditions()
-      
 
       # If no Neumann conditions are specified, assume it is 0
       if neumann_conditions == []:

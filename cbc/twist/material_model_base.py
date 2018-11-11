@@ -4,7 +4,6 @@ __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
 from cbc.twist.kinematics import *
-from cbc.twist.coordinate_system import CartesianSystem
 from sys import exit
 
 class MaterialModel():
@@ -37,7 +36,7 @@ class MaterialModel():
             else:
                 info("Converting given numerical parameter to DOLFIN Constant.")
                 parameters[key] = Constant(self.parameters[key])
-                
+
         return parameters
 
     def _construct_local_kinematics(self, u, coordinate_system = None):
@@ -112,7 +111,7 @@ class MaterialModel():
 
 class MaterialModel_Anisotropic(MaterialModel):
     """ Base class for simple  transverse isotropic hyperelastic materials """
-    
+
     def _construct_local_kinematics(self, u, coordinate_system = None):
         MaterialModel._construct_local_kinematics(self, u, coordinate_system)
         M = self.parameters['M']

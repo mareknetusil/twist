@@ -1,10 +1,8 @@
-from dolfin import *
-from kinematics import *
-from coordinate_system import *
-from material_model_base import MaterialModel
-from material_models import LinearElastic, StVenantKirchhoff, MooneyRivlin, neoHookean, Isihara, Biderman, GentThomas, Ogden, AnisoTest, GasserHolzapfelOgden
-from problem_definitions import StaticHyperelasticity, Hyperelasticity
-
-# Optimise compilation of forms
-parameters["form_compiler"]["cpp_optimize"] = True
-# parameters["form_compiler"]["optimize"] = True
+from .kinematics import *
+from .material_model_base import *
+from .material_models import *
+from .problem_definitions import *
+from .nonlinear_solver import *
+from .solution_algorithms_static import *
+from .solution_algorithms_dynamic import *
+from .solution_algorithms_blocks import *

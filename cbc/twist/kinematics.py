@@ -3,10 +3,10 @@ __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __autho
 __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
-from cbc.twist.coordinate_system import CartesianSystem
+#from cbc.twist.coordinate_system import CartesianSystem
 
 # Renaming grad to Grad because it looks nicer in the reference
-# configuration 
+# configuration
 
 from ufl import grad as ufl_grad
 
@@ -16,7 +16,7 @@ from ufl import grad as ufl_grad
 def DeformationGradient(u):
     I = SecondOrderIdentity(u)
     return variable(I + Grad(u))
-    
+
 
 def Grad_Cyl(v, coordinate_system = None):
     if not coordinate_system:
@@ -25,7 +25,7 @@ def Grad_Cyl(v, coordinate_system = None):
 
         u = coordinate_system.displacement
         F = DeformationGradient(u)
-    
+
         i, j, k, I = indices(4)
         gamma = coordinate_system.christoffel_symbols(deformed = True)
         v_iI = Dx(v[i],I) - v[k]*gamma[k,i,j]*F[j,I]
@@ -47,7 +47,7 @@ def Grad_U(u, coordinate_system = None):
 
 
 def Grad(v):
-    return ufl_grad(v) 
+    return ufl_grad(v)
 
 # Infinitesimal strain tensor
 def InfinitesimalStrain(u, coordinate_system = None):
@@ -158,28 +158,29 @@ def PrincipalStretches(u, coordinate_system = None):
     S = FunctionSpace(u.function_space().mesh(), "CG", 1)
     if (u.cell().geometric_dimension() == 2):
         D = sqrt(tr(C)*tr(C) - 4.0*det(C))
-	eig1 = sqrt(0.5*(tr(C) + D))
-	eig2 = sqrt(0.5*(tr(C) - D))
-	return [variable(eig1), variable(eig2)]
+    eig1 = sqrt(0.5*(tr(C) + D))
+    eig2 = sqrt(0.5*(tr(C) - D))
+    return [variable(eig1), variable(eig2)]
+
     if (u.cell().geometric_dimension() == 3):
-	c = (1.0/3.0)*tr(C)
-	D = C - c*SecondOrderIdentity(u)
-	q = (1.0/2.0)*det(D)
-	p = (1.0/6.0)*inner(D, D)
-	ph = project(p, S)
-	if (norm(ph) < DOLFIN_EPS):
+        c = (1.0/3.0)*tr(C)
+        D = C - c*SecondOrderIdentity(u)
+        q = (1.0/2.0)*det(D)
+        p = (1.0/6.0)*inner(D, D)
+        ph = project(p, S)
+        if (norm(ph) < DOLFIN_EPS):
             eig1 = sqrt(c)
-	    eig2 = sqrt(c)
-	    eig3 = sqrt(c)
+            eig2 = sqrt(c)
+            eig3 = sqrt(c)
         else:
-	    phi = (1.0/3.0)*atan(sqrt(p**3.0 - q**2.0)/q)
-	    if (phi < 0.0):
-                phi = phi + DOLFIN_PI/3.0
-	    end
-	    eig1 = sqrt(c + 2*sqrt(p)*cos(phi))
-	    eig2 = sqrt(c - sqrt(p)*(cos(phi) + sqrt(3)*sin(phi)))
-	    eig3 = sqrt(c - sqrt(p)*(cos(phi) - sqrt(3)*sin(phi)))
-        return [variable(eig1), variable(eig2), variable(eig3)]
+            phi = (1.0/3.0)*atan(sqrt(p**3.0 - q**2.0)/q)
+            if (phi < 0.0):
+                    phi = phi + DOLFIN_PI/3.0
+            end
+            eig1 = sqrt(c + 2*sqrt(p)*cos(phi))
+            eig2 = sqrt(c - sqrt(p)*(cos(phi) + sqrt(3)*sin(phi)))
+            eig3 = sqrt(c - sqrt(p)*(cos(phi) - sqrt(3)*sin(phi)))
+            return [variable(eig1), variable(eig2), variable(eig3)]
 
 # Pull-back of a two-tensor from the current to the reference
 # configuration
@@ -209,6 +210,6 @@ def DirectionalStretch(u, M, degree = 1, coordinate_system = None):
     if degree >= 1:
         for i in range(degree):
             Cpow = C*Cpow
-        
+
     directionalstretch = inner(M,Cpow*M)
     return variable(directionalstretch)

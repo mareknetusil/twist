@@ -1,6 +1,5 @@
 from dolfin import *
-from nonlinear_solver import *
-from cbc.twist.coordinate_system import *
+from cbc.twist.nonlinear_solver import *
 from cbc.twist.kinematics import *
 from cbc.common import *
 
@@ -48,7 +47,7 @@ def VolumeChangeTerm(u, p, q, problem, coordinate_system = None):
     jacobian = coordinate_system.volume_jacobian() if coordinate_system else Constant(1.0)
 
     J = Jacobian(u, coordinate_system)
-    
+
     L = Constant(0.0)*q*jacobian*dx
     if isinstance(material_model, tuple):
         material_list, cell_function = material_model
@@ -83,7 +82,7 @@ def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, mesh):
     L = - inner(Constant((0,)*v.geometric_dimension()), v)*ds
     dsb = Measure('ds')(subdomain_data = boundary)
     for (i, neumann_boundary) in enumerate(neumann_boundaries):
-        compiled_boundary = CompiledSubDomain(neumann_boundary) 
+        compiled_boundary = CompiledSubDomain(neumann_boundary)
         compiled_boundary.mark(boundary, i)
         L += - inner(neumann_conditions[i], v)*dsb(i)
 

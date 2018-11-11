@@ -3,7 +3,7 @@ __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __autho
 __license__  = "GNU GPL Version 3 or any later version"
 
 from dolfin import *
-from material_model_base import MaterialModel, MaterialModel_Anisotropic
+from .material_model_base import MaterialModel, MaterialModel_Anisotropic
 
 class LinearElastic(MaterialModel):
     """Defines the strain energy function for a linear elastic
@@ -64,7 +64,7 @@ class neoHookean(MaterialModel):
 
         half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
         return half_nkT*(I1bar - 3.0) + bulk*(J - 1.0)**2
-        #return half_nkT*(I1bar - 3.0)    
+        #return half_nkT*(I1bar - 3.0)
 
 
 class Isihara(MaterialModel):
@@ -140,12 +140,12 @@ class AnisoTest(MaterialModel_Anisotropic):
     """Testing model for anisotropic materials.
     psi = mu1(I1 - 3) + mu2(I4 - 1) + bulk(J - 1)^2
     with mu2 representing the stiffness of fibres having the direction M"""
-    
+
     def model_info(self):
         self.num_parameters = 4
         self.kinematic_measure = "AnisotropicInvariants"
 
-    def strain_energy(self, parameters):     
+    def strain_energy(self, parameters):
         J = sqrt(self.I3)
         I1bar = J**(-2.0/3.0)*self.I1
         I4 = self.I4
@@ -165,6 +165,6 @@ class GasserHolzapfelOgden(MaterialModel_Anisotropic):
         J = sqrt(self.I3)
         I1bar = J**(-2.0/3.0)*self.I1
         I4 = self.I4
-    
+
         mu, k1, k2, bulk = parameters['mu'], parameters['k1'], parameters['k2'], parameters['bulk']
         return mu*(I1bar - 3.0) + k1/k2*(exp(k2*(I4 - 1.0)**2) - 1.0) + bulk*(J - 1.0)**2
