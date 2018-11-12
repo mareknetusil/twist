@@ -39,18 +39,18 @@ class MaterialModel():
 
         return parameters
 
-    def _construct_local_kinematics(self, u, coordinate_system = None):
+    def _construct_local_kinematics(self, u):
         self.I = SecondOrderIdentity(u)
         self.epsilon = InfinitesimalStrain(u)
         self.F = DeformationGradient(u)
-        self.J = Jacobian(u, coordinate_system)
-        self.C = RightCauchyGreen(u, coordinate_system)
-        self.Cbar = IsochoricRightCauchyGreen(u, coordinate_system)
-        self.E = GreenLagrangeStrain(u, coordinate_system)
+        self.J = Jacobian(u)
+        self.C = RightCauchyGreen(u)
+        self.Cbar = IsochoricRightCauchyGreen(u)
+        self.E = GreenLagrangeStrain(u)
         self.b = LeftCauchyGreen(u)
         self.e = EulerAlmansiStrain(u)
-        [self.I1, self.I2, self.I3] = CauchyGreenInvariants(u, coordinate_system)
-        [self.I1bar, self.I2bar] = IsochoricCauchyGreenInvariants(u, coordinate_system)
+        [self.I1, self.I2, self.I3] = CauchyGreenInvariants(u)
+        [self.I1bar, self.I2bar] = IsochoricCauchyGreenInvariants(u)
 
         # This breaks CBC.Swing
         #[self.l1, self.l2, self.l3] = PrincipalStretches(u)
@@ -58,14 +58,8 @@ class MaterialModel():
     def strain_energy(self, parameters):
         pass
 
-    def SecondPiolaKirchhoffStress(self, u, coordinate_system = None):
-        self._construct_local_kinematics(u, coordinate_system)
-        if coordinate_system:
-            G_raise = coordinate_system.metric_tensor('raise')
-            G_lower = coordinate_system.metric_tensor('lower')
-        else:
-            G_raise = self.I
-            G_lower = self.I
+    def SecondPiolaKirchhoffStress(self, u):
+        self._construct_local_kinematics(u)
 
         psi = self.strain_energy(MaterialModel._parameters_as_functions(self, u))
 
@@ -77,7 +71,7 @@ class MaterialModel():
             S = 2*diff(psi, C)
         elif self.kinematic_measure ==  "GreenLagrangeStrain":
             E = self.E
-            S = G_raise*diff(psi, E)*G_lower
+            S = diff(psi, E)
         elif self.kinematic_measure == "CauchyGreenInvariants":
             I = self.I; C = self.C
             I1 = self.I1; I2 = self.I2; I3 = self.I3
@@ -98,28 +92,18 @@ class MaterialModel():
             S = 1.0/l1*diff(psi, l1) + 1.0/l2*diff(psi, l2) + 1.0/l3*diff(psi, l3)
         return S
 
-    def FirstPiolaKirchhoffStress(self, u, coordinate_system = None):
-        S = self.SecondPiolaKirchhoffStress(u, coordinate_system)
-        F = self.F
-        P = F*S
-
-        if self.kinematic_measure == "InfinitesimalStrain":
-            return S
-        else:
-            return P
-
 
 class MaterialModel_Anisotropic(MaterialModel):
     """ Base class for simple  transverse isotropic hyperelastic materials """
 
-    def _construct_local_kinematics(self, u, coordinate_system = None):
-        MaterialModel._construct_local_kinematics(self, u, coordinate_system)
+    def _construct_local_kinematics(self, u):
+        MaterialModel._construct_local_kinematics(self, u)
         M = self.parameters['M']
         self.I4 = DirectionalStretch(u, M)
         self.I5 = DirectionalStretch(u, M, 2)
 
-    def SecondPiolaKirchhoffStress(self, u, coordinate_system = None):
-        self._construct_local_kinematics(u, coordinate_system)
+    def SecondPiolaKirchhoffStress(self, u):
+        self._construct_local_kinematics(u)
         psi = self.strain_energy(MaterialModel._parameters_as_functions(self, u))
 
         if self.kinematic_measure == "InfinitesimalStrain":

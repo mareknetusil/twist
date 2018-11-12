@@ -10,7 +10,7 @@ from cbc.twist.nonlinear_solver import *
 from cbc.twist.solution_algorithms_blocks import *
 from cbc.common import *
 from cbc.common.utils import *
-from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian, Grad_Cyl
+from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian
 from sys import exit
 from numpy import array, loadtxt, linalg
 

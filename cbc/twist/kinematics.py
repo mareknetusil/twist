@@ -17,102 +17,42 @@ def DeformationGradient(u):
     I = SecondOrderIdentity(u)
     return variable(I + Grad(u))
 
-
-def Grad_Cyl(v, coordinate_system = None):
-    if not coordinate_system:
-        return Grad(v)
-    else:
-
-        u = coordinate_system.displacement
-        F = DeformationGradient(u)
-
-        i, j, k, I = indices(4)
-        gamma = coordinate_system.christoffel_symbols(deformed = True)
-        v_iI = Dx(v[i],I) - v[k]*gamma[k,i,j]*F[j,I]
-
-        return as_tensor(v_iI, (i, I))
-
-def Grad_U(u, coordinate_system = None):
-    #FIXME: Something wrong with this!
-    #coordinate_system.set_mesh(u.function_space().mesh())
-    if not coordinate_system:
-        return Grad(u)
-    else:
-        I, J, K = indices(3)
-        Gamma = coordinate_system.christoffel_symbols()
-
-        u_IJ = Dx(u[I],J) + Gamma[I,J,K]*u[K]
-
-        return as_tensor(u_IJ, (I, J))
-
-
 def Grad(v):
     return ufl_grad(v)
 
 # Infinitesimal strain tensor
-def InfinitesimalStrain(u, coordinate_system = None):
-    if not coordinate_system:
-        return variable(0.5*(Grad(u) + Grad(u).T))
-    else:
-        gradu = Grad_U(u, coordinate_system)
-        G_raise = coordinate_system.metric_tensor('raise')
-        G_lower = coordinate_system.metric_tensor('lower')
-
-        return variable(0.5(gradu + G_raise*gradu.T*G_lower))
+def InfinitesimalStrain(u):
+    return variable(0.5*(Grad(u) + Grad(u).T))
 
 # Second order identity tensor
 def SecondOrderIdentity(u):
     return variable(Identity(u.geometric_dimension()))
 
-
 # Determinant of the deformation gradient
-def Jacobian(u, coordinate_system = None):
+def Jacobian(u):
     F = DeformationGradient(u)
-
-    if not coordinate_system:
-        return variable(det(F))
-    else:
-        G_det = det(coordinate_system.metric_tensor('raise'))
-        g_det = det(coordinate_system.metric_tensor('lower', deformed = True))
-
-        #TODO: Should it be sqrt(det(g)*det(G))?
-        return variable(g_det*G_det*det(F))
-
+    return variable(det(F))
 
 # Right Cauchy-Green tensor
-def RightCauchyGreen(u, coordinate_system = None):
-    if not coordinate_system:
-        F = DeformationGradient(u)
-        return F.T*F
-    else:
-        G_raise = coordinate_system.metric_tensor('raise')
-        G_lower = coordinate_system.metric_tensor('lower')
-        I = SecondOrderIdentity(u)
-        gradu = Grad_U(u, coordinate_system)
-
-        return variable(I + gradu + G_raise*gradu.T*G_lower + (G_raise*gradu.T*G_lower)*gradu)
-
+def RightCauchyGreen(u):
+    F = DeformationGradient(u)
+    return F.T*F
 
 # Green-Lagrange strain tensor
-def GreenLagrangeStrain(u, coordinate_system = None):
+def GreenLagrangeStrain(u):
     I = SecondOrderIdentity(u)
-    C = RightCauchyGreen(u, coordinate_system)
+    C = RightCauchyGreen(u)
     return variable(0.5*(C - I))
 
 # Left Cauchy-Green tensor
-def LeftCauchyGreen(u, coordinate_system = None):
-    if not coordinate_system:
-        F = DeformationGradient(u)
-        return variable(F*F.T)
-    else:
-        G_raise = coordinate_system.metric_tensor('raise', deformed = True)
-        G_lower = coordinate_system.metric_tensor('lower', deformed = True)
-        #TODO: NOT FINISHED
+def LeftCauchyGreen(u):
+    F = DeformationGradient(u)
+    return variable(F*F.T)
 
 # Euler-Almansi strain tensor
-def EulerAlmansiStrain(u, coordinate_system = None):
+def EulerAlmansiStrain(u):
     I = SecondOrderIdentity(u)
-    b = LeftCauchyGreen(u, coordinate_system)
+    b = LeftCauchyGreen(u)
     return variable(0.5*(I - inv(b)))
 
 # Invariants of an arbitrary tensor, A
@@ -124,37 +64,37 @@ def Invariants(A):
 
 # Invariants of the (right/left) Cauchy-Green tensor
 #TODO: NEEDS TESTING
-def CauchyGreenInvariants(u, coordinate_system):
-    C = RightCauchyGreen(u, coordinate_system)
+def CauchyGreenInvariants(u):
+    C = RightCauchyGreen(u)
     [I1, I2, I3] = Invariants(C)
     return [variable(I1), variable(I2), variable(I3)]
 
 # Isochoric part of the deformation gradient
 #TODO: NEEDS TESTING
-def IsochoricDeformationGradient(u, coordinate_system = None):
+def IsochoricDeformationGradient(u):
     F = DeformationGradient(u)
-    J = Jacobian(u, coordinate_system)
+    J = Jacobian(u)
     return variable(J**(-1.0/3.0)*F)
 
 # Isochoric part of the right Cauchy-Green tensor
 #TODO: NEEDS TESTING
-def IsochoricRightCauchyGreen(u, coordinate_system = None):
-    C = RightCauchyGreen(u, coordinate_system)
-    J = Jacobian(u, coordinate_system)
+def IsochoricRightCauchyGreen(u):
+    C = RightCauchyGreen(u)
+    J = Jacobian(u)
     return variable(J**(-2.0/3.0)*C)
 
 # Invariants of the ischoric part of the (right/left) Cauchy-Green
 # tensor. Note that I3bar = 1 by definition.
 #TODO: NEEDS TESTING
-def IsochoricCauchyGreenInvariants(u, coordinate_system = None):
-    Cbar = IsochoricRightCauchyGreen(u, coordinate_system)
+def IsochoricCauchyGreenInvariants(u):
+    Cbar = IsochoricRightCauchyGreen(u)
     [I1bar, I2bar, I3bar] = Invariants(Cbar)
     return [variable(I1bar), variable(I2bar)]
 
 # Principal stretches
 #TODO: NEEDS TESTING
-def PrincipalStretches(u, coordinate_system = None):
-    C = RightCauchyGreen(u, coodinate_system)
+def PrincipalStretches(u):
+    C = RightCauchyGreen(u)
     S = FunctionSpace(u.function_space().mesh(), "CG", 1)
     if (u.cell().geometric_dimension() == 2):
         D = sqrt(tr(C)*tr(C) - 4.0*det(C))
@@ -185,8 +125,8 @@ def PrincipalStretches(u, coordinate_system = None):
 # Pull-back of a two-tensor from the current to the reference
 # configuration
 #TODO: NEEDS TESTING
-def PiolaTransform(A, u, coordinate_system = None):
-    J = Jacobian(u, coordinate_system)
+def PiolaTransform(A, u):
+    J = Jacobian(u)
     F = DeformationGradient(u)
     B = J*A*inv(F).T
     return B
@@ -194,8 +134,8 @@ def PiolaTransform(A, u, coordinate_system = None):
 # Push-forward of a two-tensor from the reference to the current
 # configuration
 #TODO: NEEDS TESTING
-def InversePiolaTransform(A, u, coordinate_system = None):
-    J = Jacobian(u, coordinate_system)
+def InversePiolaTransform(A, u):
+    J = Jacobian(u)
     F = DeformationGradient(u)
     B = (1/J)*A*F.T
     return B
@@ -204,8 +144,8 @@ def InversePiolaTransform(A, u, coordinate_system = None):
 # Computes M*C^nM
 # for n = 1 equals to the stretch in the direction M
 #TODO: NEEDS TESTING
-def DirectionalStretch(u, M, degree = 1, coordinate_system = None):
-    C = RightCauchyGreen(u, coordinate_system)
+def DirectionalStretch(u, M, degree = 1):
+    C = RightCauchyGreen(u)
     Cpow = SecondOrderIdentity(u)
     if degree >= 1:
         for i in range(degree):
