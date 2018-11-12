@@ -6,14 +6,65 @@ from dolfin import *
 from cbc.twist.kinematics import *
 from sys import exit
 
-class MaterialModel():
+class _MaterialModel_Interface():
+  """ Basic interface for any representant of a material """
+  def __init__(self):
+    self.kinematic_measure = ""
+
+  def model_info(self):
+    pass
+
+  def SecondPiolaKirchhoffStres(self, u):
+    pass
+
+  def FirstPiolaKirchhoffStress(self, u):
+    S = self.SecondPiolaKirchhoffStress(u)
+    F = DeformationGradient(u)
+    P = F*S
+
+    if self.kinematic_measure == "InfinitesimalStrain":
+      return S
+    else:
+      return P
+
+  def CauchyStress(self, u):
+    P = self.FirstPiolaKirchhoffStress(u)
+    F = DeformationGradient(u)
+    J = Jacobian(u)
+    T = (1/J)*P*F.T
+
+    if self.kinematic_measure == "InfinitesimalStrain":
+      return S
+    else:
+      return P
+
+  def __add__(self, other):
+    return _MaterialModel_Sum(self, other)
+
+class _MaterialModel_Sum(_MaterialModel_Interface):
+  """
+  Proxy class for a material defined by a sum of strain energies.
+  """
+  def __init__(self, left, right):
+    _MaterialModel_Interface.__init__(self)
+    self.left = left
+    self.right = right
+
+  def SecondPiolaKirchhoffStress(self, u):
+    S_left = self.left.SecondPiolaKirchhoffStress(u)
+    S_right = self.right.SecondPiolaKirchhoffStress(u)
+    return S_left + S_right
+
+
+class MaterialModel(_MaterialModel_Interface):
     """Base class for all hyperelastic material models """
 
     def __init__(self, parameters):
+        _MaterialModel_Interface.__init__(self)
+        #super(MaterialModel_Interface, self)
         self.num_parameters = 0
         self.parameters = parameters
         self.P = 0
-        self.kinematic_measure = ""
         self.model_info()
         self._num_parameters_check()
 
