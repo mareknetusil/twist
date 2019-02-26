@@ -143,6 +143,25 @@ class MaterialModel(_MaterialModel_Interface):
             S = 1.0/l1*diff(psi, l1) + 1.0/l2*diff(psi, l2) + 1.0/l3*diff(psi, l3)
         return S
 
+    def FirstPiolaKirchhoffStress(self, u):
+        S = self.SecondPiolaKirchhoffStress(u)
+        F = self.F
+        P = F*S
+
+        if self.kinematic_measure == "InfinitesimalStrain":
+            return S
+        else:
+            return P
+
+    def CauchyStress(self, u):
+        P = self.FirstPiolaKirchhoffStress(u)
+        F = self.F
+        J = Jacobian(u)
+        T = (1/J)*P*F.T
+        if self.kinematic_measure == "InfinitesimalStrain":
+            return P
+        else:
+            return T
 
 class MaterialModel_Anisotropic(MaterialModel):
     """ Base class for simple  transverse isotropic hyperelastic materials """
