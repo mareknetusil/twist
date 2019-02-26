@@ -1,18 +1,20 @@
 from __future__ import print_function
+
 __author__ = "Marek Netusil"
 
-from cbc.twist import *
+import fenics
+from cbc.twist.problem_definitions import StaticHyperelasticity
+from cbc.twist.material_models import *
 from sys import argv
 
 """ DEMO - Hyperelastic cube is stretched/compressed by a traction acting on one side """
 
 class Pull(StaticHyperelasticity):
     """ Definition of the hyperelastic problem """
-
     def __init__(self, *args, **kwargs):
         StaticHyperelasticity.__init__(self, *args, **kwargs)
         n = 8
-        self._mesh = UnitCubeMesh(n, n, n)
+        self._mesh = fenics.UnitCubeMesh(n, n, n)
 
     def mesh(self):
         return self._mesh

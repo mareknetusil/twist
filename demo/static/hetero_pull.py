@@ -1,8 +1,12 @@
 from __future__ import print_function
+
 __author__ = "Marek Netusil"
 
-from cbc.twist import *
+import fenics
+from cbc.twist.problem_definitions import StaticHyperelasticity
+from cbc.twist.material_models import *
 from sys import argv
+
 
 """ DEMO - Hyperelastic cube is stretched/compressed by a traction acting on one side """
 
@@ -11,7 +15,7 @@ class Pull(StaticHyperelasticity):
     def __init__(self, *args, **kwargs):
         StaticHyperelasticity.__init__(self, *args, **kwargs)
         n = 10
-        self._mesh = UnitCubeMesh(n, n, n)
+        self._mesh = fenics.UnitCubeMesh(n, n, n)
 
     def mesh(self):
         return self._mesh
@@ -63,7 +67,8 @@ class Pull(StaticHyperelasticity):
         materials.append(Ogden({'alpha1':1.3,'alpha2':5.0,'alpha3':-2.0,\
                                 'mu1':6.3e5,'mu2':0.012e5,'mu3':-0.1e5}))
 
-        subdomains = CellFunction('size_t', self._mesh)
+        subdomains = MeshFunction('size_t', self._mesh,
+                                  self._mesh.topology().dim())
         subdomains.set_all(0)
         right = AutoSubDomain(lambda x: x[0] >= .8)
         middle = AutoSubDomain(lambda x: pow(x[0] - .5, 2) <= .01)

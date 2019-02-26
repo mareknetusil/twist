@@ -1,9 +1,12 @@
 from __future__ import print_function
+
 __author__ = "Harish Narayanan"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
 __license__  = "GNU GPL Version 3 or any later version"
 
-from cbc.twist import *
+import fenics
+from cbc.twist.problem_definitions import StaticHyperelasticity
+from cbc.twist.material_models import *
 from sys import argv
 """ DEMO - Twisting of a hyperelastic cube """
 
@@ -12,7 +15,7 @@ class Twist(StaticHyperelasticity):
     def __init__(self, *args, **kwargs):
         StaticHyperelasticity.__init__(self, *args, **kwargs)
         n = 8
-        self._mesh = UnitCubeMesh(n, n, n)
+        self._mesh = fenics.UnitCubeMesh(n, n, n)
 
     def mesh(self):
         return self._mesh

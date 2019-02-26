@@ -4,12 +4,24 @@ from cbc.twist.kinematics import *
 from cbc.common import *
 
 
-def elasticity_displacement(P, B, v):
+def body_force(B, v):
     """
-    Basis for the dislacement formulation: - Div(P) = B
-    Returns: P:Grad(v)*dx - inner(B,v)*dx
+    Weak form of the volume forces
+    :param B: body forces
+    :param v: displacement test function
+    :return: B*v*dx
     """
-    L = -inner(B, v) * dx
+    return inner(B, v) * dx
+
+
+def elasticity_displacement(P, v):
+    """
+    Weak form of the inner surface forces
+    :param P: 1st Piola-Kirchhoff stress tensor
+    :param v: displacement test function
+    :return: P:Grad(v)*dx - inner(B,v)*dx
+    """
+    L = inner(Constant((0, ) * v.geometric_dimension()), v) * dx
 
     # The variational form corresponding to hyperelasticity
     if isinstance(P, tuple):
@@ -74,11 +86,11 @@ def neumann_condition(neumann_conditions, neumann_boundaries, v, mesh):
     boundary = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
     boundary.set_all(len(neumann_boundaries) + 1)
 
-    L = - inner(Constant((0,) * v.geometric_dimension()), v) * ds
+    L = inner(Constant((0,) * v.geometric_dimension()), v) * ds
     dsb = Measure('ds')(subdomain_data=boundary)
     for (i, neumann_boundary) in enumerate(neumann_boundaries):
         compiled_boundary = CompiledSubDomain(neumann_boundary)
         compiled_boundary.mark(boundary, i)
-        L += - inner(neumann_conditions[i], v) * dsb(i)
+        L += inner(neumann_conditions[i], v) * dsb(i)
 
     return L
