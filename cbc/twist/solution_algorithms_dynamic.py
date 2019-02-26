@@ -29,26 +29,25 @@ def default_parameters():
 
     return p
 
+
 class CG1MomentumBalanceSolver(CBCSolver):
     """Solves the dynamic balance of linear momentum using a CG1
     time-stepping scheme"""
 
     def __init__(self, problem, parameters):
-
         """Initialise the momentum balance solver"""
+        CBCSolver.__init__(self)
 
         # Get problem parameters
-        mesh        = problem.mesh()
+        mesh = problem.mesh()
         dt, t_range = timestep_range_cfl(problem, mesh)
-        end_time    = problem.end_time()
+        end_time = problem.end_time()
         info("Using time step dt = %g" % dt)
 
         # Define function spaces
         element_degree = parameters["element_degree"]
         #scalar = FiniteElement("CG", mesh.ufl_cell(), element_degree)
         vector = VectorElement("CG", mesh.ufl_cell(), element_degree)
-
-
 
         vector_space = FunctionSpace(mesh, vector)
         mixed_space = FunctionSpace(mesh, vector*vector)
@@ -61,9 +60,9 @@ class CG1MomentumBalanceSolver(CBCSolver):
         u0, v0 = problem.initial_conditions()
 
         # If no initial conditions are specified, assume they are 0
-        if u0 == []:
+        if not u0:
             u0 = Constant((0,)*vector_space.mesh().geometry().dim())
-        if v0 == []:
+        if not v0:
             v0 = Constant((0,)*vector_space.mesh().geometry().dim())
 
         # If either are text strings, assume those are file names and
@@ -96,10 +95,10 @@ class CG1MomentumBalanceSolver(CBCSolver):
 
         # Driving forces
         B  = problem.body_force()
-        if B == []: B = problem.body_force_u(0.5*(u0 + u))
+        if not B: B = problem.body_force_u(0.5 * (u0 + u))
 
         # If no body forces are specified, assume it is 0
-        if B == []:
+        if not B:
             B = Constant((0,)*vector_space.mesh().geometry().dim())
 
         # Evaluate displacements and velocities at mid points
@@ -110,7 +109,7 @@ class CG1MomentumBalanceSolver(CBCSolver):
         rho0 = problem.reference_density()
 
         # If no reference density is specified, assume it is 1.0
-        if rho0 == []:
+        if not rho0:
             rho0 = Constant(1.0)
 
         density_type = str(rho0.__class__)
@@ -233,6 +232,8 @@ class CG1MomentumBalanceSolver(CBCSolver):
                 self.displacement_file = XDMFFile("displacement.xdmf")
             if self.velocity_file is None:
                 self.velocity_file = XDMFFile("velocity.xdmf")
+            u.rename('u', "displacement")
+            v.rename('v', "velocity")
             self.displacement_file.write(u, self.t)
             self.velocity_file.write(v, self.t)
             #self.displacement_file << u
@@ -266,6 +267,7 @@ class LinearPoroElasticitySolver(CBCSolver):
 
     def __init__(self, problem, parameters):
         """Initialise the momentum balance solver"""
+        CBCSolver.__init__(self)
 
         # Get problem parameters
         mesh        = problem.mesh()
@@ -352,8 +354,10 @@ class LinearPoroElasticitySolver(CBCSolver):
             mu = problem.mu
             lmbda = problem.lmbda
             return 2*inner(e(u), e(v))*dx + lmbda*div(u)*div(v)*dx
+
         def b(q, v):
             return q*div(v)*dx
+
         def J(p, q):
             delta = 0.1
             h = MaxFacetEdgeLength(mesh)
