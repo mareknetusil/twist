@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "Harish Narayanan"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
 __license__  = "GNU GPL Version 3 or any later version"
@@ -53,12 +54,12 @@ class Twist(StaticHyperelasticity):
         materials.append(GasserHolzapfelOgden({'mu':mu,'k1':k1,'k2':k2,'M':M,'bulk':lmbda}))
         materials.append(Ogden({'alpha1':1.3,'alpha2':5.0,'alpha3':-2.0,\
                                 'mu1':6.3e5,'mu2':0.012e5,'mu3':-0.1e5}))
-        
+
         try:
             index = int(argv[1])
         except:
             index = 2
-        print str(materials[index])
+        print(materials[index])
         return materials[index]
 
     def name_method(self, method):
@@ -76,5 +77,5 @@ twist.name_method("DISPLACEMENT BASED FORMULATION")
 
 
 # Solve the problem
-print twist
+print(twist)
 twist.solve()

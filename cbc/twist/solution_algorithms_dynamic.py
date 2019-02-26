@@ -17,7 +17,7 @@ def default_parameters():
     "Return default solver parameters."
     p = Parameters("solver_parameters")
     p.add("plot_solution", True)
-    p.add("save_solution", False)
+    p.add("save_solution", True)
     p.add("store_solution_data", False)
     p.add("element_degree",2)
     p.add("problem_formulation",'displacement')
@@ -188,8 +188,8 @@ class CG1MomentumBalanceSolver(CBCSolver):
             self.step(self.dt)
             self.update()
 
-        if self.parameters["plot_solution"]:
-            interactive()
+        #if self.parameters["plot_solution"]:
+        #    interactive()
 
         return self.U.split(True)[0]
 
@@ -219,24 +219,29 @@ class CG1MomentumBalanceSolver(CBCSolver):
         self.U0.assign(self.U)
 
         # Plot solution
-        if self.parameters["plot_solution"]:
-            # Copy to a fixed function to trick Viper into not opening
-            # up multiple windows
-            "THIS ASSIGN DOES NOT WORK FOR SOME REASON!" #self.u_plot.assign(u)
-            #plot(u, title="Displacement", mode="displacement", rescale=True)
-            "This is a new ploting"
-            self.uplot.plot(u)
+        #if self.parameters["plot_solution"]:
+        #    # Copy to a fixed function to trick Viper into not opening
+        #    # up multiple windows
+        #    "THIS ASSIGN DOES NOT WORK FOR SOME REASON!" #self.u_plot.assign(u)
+        #    #plot(u, title="Displacement", mode="displacement", rescale=True)
+        #    "This is a new ploting"
+        #    self.uplot.plot(u)
 
         # Store solution (for plotting)
         if self.parameters["save_solution"]:
-            if self.displacement_file is None: self.displacement_file = File("displacement.pvd")
-            if self.velocity_file is None: self.velocity_file = File("velocity.pvd")
-            self.displacement_file << u
-            self.velocity_file << v
+            if self.displacement_file is None:
+                self.displacement_file = XDMFFile("displacement.xdmf")
+            if self.velocity_file is None:
+                self.velocity_file = XDMFFile("velocity.xdmf")
+            self.displacement_file.write(u, self.t)
+            self.velocity_file.write(v, self.t)
+            #self.displacement_file << u
+            #self.velocity_file << v
 
         # Store solution data
         if self.parameters["store_solution_data"]:
-            if self.displacement_velocity_series is None: self.displacement_velocity_series = TimeSeries("displacement_velocity")
+            if self.displacement_velocity_series is None:
+                self.displacement_velocity_series = TimeSeries("displacement_velocity")
             self.displacement_velocity_series.store(self.U.vector(), self.t)
 
         # Move to next time step
@@ -423,8 +428,8 @@ class LinearPoroElasticitySolver(CBCSolver):
             self.step(self.dt)
             self.update()
 
-        if self.parameters["plot_solution"]:
-            interactive()
+        #if self.parameters["plot_solution"]:
+        #    interactive()
 
         return self.w
 
@@ -449,20 +454,24 @@ class LinearPoroElasticitySolver(CBCSolver):
         self.p_n.assign(p_n)
 
         # Plot solution
-        if self.parameters["plot_solution"]:
-            # Copy to a fixed function to trick Viper into not opening
-            # up multiple windows
-            "THIS ASSIGN DOES NOT WORK FOR SOME REASON!" #self.u_plot.assign(u)
-            #plot(u, title="Displacement", mode="displacement", rescale=True)
-            "This is a new ploting"
-            self.uplot.plot(self.u_n)
+        #if self.parameters["plot_solution"]:
+        #    # Copy to a fixed function to trick Viper into not opening
+        #    # up multiple windows
+        #    "THIS ASSIGN DOES NOT WORK FOR SOME REASON!" #self.u_plot.assign(u)
+        #    #plot(u, title="Displacement", mode="displacement", rescale=True)
+        #    "This is a new ploting"
+        #    self.uplot.plot(self.u_n)
 
         # Store solution (for plotting)
-        #if self.parameters["save_solution"]:
-        #    if self.displacement_file is None: self.displacement_file = File("displacement.pvd")
-        #    if self.velocity_file is None: self.velocity_file = File("velocity.pvd")
-        #    self.displacement_file << u
-        #    self.velocity_file << v
+        if self.parameters["save_solution"]:
+            if self.displacement_file is None:
+                self.displacement_file = XDMFFile("displacement.xdmf")
+            if self.velocity_file is None:
+                self.velocity_file = XDMFFile("velocity.xdmf")
+            self.displacement_file.write(u_n)
+            #self.velocity_file.write(v)
+            #self.displacement_file << u
+            #self.velocity_file << v
 
         # Store solution data
         #if self.parameters["store_solution_data"]:

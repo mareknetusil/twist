@@ -22,7 +22,7 @@ def default_parameters():
    "Return default solver parameters."
    p = Parameters("solver_parameters")
    p.add("plot_solution", True)
-   p.add("save_solution", False)
+   p.add("save_solution", True)
    p.add("store_solution_data", False)
    p.add("element_degree",2)
    p.add("problem_formulation",'displacement')
@@ -35,7 +35,7 @@ def default_parameters():
    return p
 
 class StaticMomentumBalanceSolver_U(CBCSolver):
-   "Solves the static balance of linear momentum"
+   """Solves the static balance of linear momentum"""
 
    def __init__(self, problem, parameters):
       """Initialise the static momentum balance solver"""
@@ -108,13 +108,13 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
       # Plot solution
       if self.parameters["plot_solution"]:
          plot(u, title="Displacement", mode="displacement", axes=True, rescale=True)
-         interactive()
 
       # Store solution (for plotting)
       #FIXME: Update to XDMFFile
       if self.parameters["save_solution"]:
-         displacement_file = File("displacement.xdmf")
-         displacement_file << u
+         displacement_file = XDMFFile("displacement.xdmf")
+         displacement_file.write(u)
+         #displacement_file << u
 
       # Store solution data
       if self.parameters["store_solution_data"]:

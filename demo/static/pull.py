@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "Marek Netusil"
 
 from cbc.twist import *
@@ -36,7 +37,7 @@ class Pull(StaticHyperelasticity):
     def neumann_boundaries(self):
         right = "x[0] == 1.0"
         return [right]
-    
+
 
     # List of material models
     def material_model(self):
@@ -61,11 +62,11 @@ class Pull(StaticHyperelasticity):
         materials.append(Ogden({'alpha1':1.3,'alpha2':5.0,'alpha3':-2.0,\
                                 'mu1':6.3e5,'mu2':0.012e5,'mu3':-0.1e5}))
 
-        try:        
+        try:
             index = int(argv[2])
         except:
             index = 2
-        print str(materials[index])
+        print(str(materials[index]))
         return materials[index]
 
     def name_method(self, method):
@@ -82,6 +83,6 @@ pull.name_method("DISPLACEMENT BASED FORMULATION")
 #pull.parameters['problem_formulation'] = 'mixed_up'
 
 # Solve the problem
-print pull
+print(pull)
 pull.solve()
 

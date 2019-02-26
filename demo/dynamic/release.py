@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "Harish Narayanan"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
 __license__  = "GNU GPL Version 3 or any later version"
@@ -50,7 +51,6 @@ class Release(Hyperelasticity):
 # Setup and solve problem
 problem = Release()
 problem.parameters['element_degree'] = 1
-problem.parameters['save_solution'] = False 
+problem.parameters['save_solution'] = False
 print(problem)
 problem.solve()
-interactive()

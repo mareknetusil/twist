@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "Marek Netusil"
 
 from cbc.twist import *
@@ -35,7 +36,7 @@ class Pull(StaticHyperelasticity):
     def neumann_boundaries(self):
         right = "x[0] == 1.0"
         return [right]
-    
+
 
     # List of material models
     def material_model(self):
@@ -89,5 +90,5 @@ pull = Pull()
 pull.name_method("DISPLACEMENT BASED FORMULATION")
 
 # Solve the problem
-print pull
+print(pull)
 pull.solve()

@@ -4,15 +4,11 @@ from cbc.twist.kinematics import *
 from cbc.common import *
 
 def ElasticityDisplacementTerm(P, B, v, coordinate_system = None):
-
-    if coordinate_system:
-        G_raise = coordinate_system.metric_tensor('raise')
-        jacobian = coordinate_system.volume_jacobian()
-    else:
-        G_raise = SecondOrderIdentity(v)
-        jacobian = Constant(1.0)
-
-    L = -inner(B, v)*jacobian*dx
+    """
+    Basis for the dislacement formulation: - Div(P) = B
+    Returns: P:Grad(v)*dx - inner(B,v)*dx
+    """
+    L = -inner(B, v)*dx
 
     # The variational form corresponding to hyperelasticity
     if isinstance(P, tuple):
@@ -20,35 +16,35 @@ def ElasticityDisplacementTerm(P, B, v, coordinate_system = None):
 
         for (index, P) in enumerate(P_list):
             new_dx = Measure('dx')(subdomain_data = subdomains_list[index][0])
-            L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*new_dx(subdomains_list[index][1])
+            L += inner(P, Grad(v))*new_dx(subdomains_list[index][1])
     else:
-        L += inner(P*G_raise, Grad_Cyl(v, coordinate_system))*jacobian*dx
+        L += inner(P, Grad(v))*dx
 
     return L
 
 
 def ElasticityPressureTerm(u, p, v, coordinate_system = None):
-    if coordinate_system:
-        g = coordinate_system.metric_tensor('raise', deformed = True)
-        jacobian = coordinate_system.volume_jacobian()
-    else:
-        g = SecondOrderIdentity(v)
-        jacobian = Constant(1.0)
-    J = Jacobian(u, coordinate_system)
+    """
+    The nonlinear pressure term: pJF^(-T)
+    Returns: -p*j*inner(F^(-T),Grad(v))*dx
+    """
+    J = Jacobian(u)
     F = DeformationGradient(u)
 
-    L = -p*J*inner(g*inv(F.T), Grad_Cyl(v, coordinate_system))*jacobian*dx
+    L = -p*J*inner(g*inv(F.T), Grad(v))*dx
     return L
 
 
-
 def VolumeChangeTerm(u, p, q, problem, coordinate_system = None):
+    """
+    The equation of volume change. Compressible material for bulk modulus
+    positive and incompressible otherwise.
+    Returns: (1/lb*p + J - 1)*q*dx for compressible, (J - 1)*q*dx for incompressible
+    """
     material_model = problem.material_model()
-    jacobian = coordinate_system.volume_jacobian() if coordinate_system else Constant(1.0)
+    J = Jacobian(u)
 
-    J = Jacobian(u, coordinate_system)
-
-    L = Constant(0.0)*q*jacobian*dx
+    L = Constant(0.0)*q*dx
     if isinstance(material_model, tuple):
         material_list, cell_function = material_model
         new_dx = Measure('dx')[cell_function]
@@ -56,25 +52,24 @@ def VolumeChangeTerm(u, p, q, problem, coordinate_system = None):
             material_parameters = material_list[index].parameters
             lb = material_parameters['bulk']
             if lb <= 0.0:
-                L =+ (J - 1.0)*q*jacobian*new_dx(index)
+                L =+ (J - 1.0)*q*new_dx(index)
             else:
-                L += (1.0/lb*p + J - 1.0)*q*jacobian*new_dx(index)
+                L += (1.0/lb*p + J - 1.0)*q*new_dx(index)
     else:
         lb = problem.material_model().parameters['bulk']
         if lb <= 0.0:
-            L+= (J - 1.0)*q*jacobian*dx
+            L+= (J - 1.0)*q*dx
         else:
-            L += (1.0/lb*p + J - 1.0)*q*jacobian*dx
-
+            L += (1.0/lb*p + J - 1.0)*q*dx
     return L
 
 
-
-
-#TODO: Implement the curvilinear coordinates
 #TODO: Get rid of the mesh argument
 def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, mesh):
-
+    """
+    Neumann boundary condition: dU/dN = g
+    Returns: - inner(g,v)*dS
+    """
 
     boundary = FacetFunction("size_t", mesh)
     boundary.set_all(len(neumann_boundaries) + 1)
@@ -89,9 +84,10 @@ def NeumannBoundaryTerm(neumann_conditions, neumann_boundaries, v, mesh):
     return L
 
 
-
 class FunctionSpace_U():
-
+    """
+    Discrete function space for the displacement U
+    """
     def __init__(self, mesh, element_type, element_degree, pbc = []):
         if pbc == []:
             self.space = VectorFunctionSpace(mesh, element_type, element_degree)
@@ -119,6 +115,9 @@ class FunctionSpace_U():
 
 
 class FunctionSpace_UP():
+    """
+    Discrete space for the (U,P)-mixed formulation
+    """
     def __init__(self, mesh, element_type, element_degree, pbc = []):
         if pbc == []:
             vector = VectorFunctionSpace(mesh, element_type, element_degree)
