@@ -71,7 +71,7 @@ def neumann_condition(neumann_conditions, neumann_boundaries, v, mesh):
     Neumann boundary condition: dU/dN = g
     Returns: - inner(g,v)*dS
     """
-    boundary = FacetFunction("size_t", mesh)
+    boundary = MeshFunction("size_t", mesh, mesh.topology().dim() - 1)
     boundary.set_all(len(neumann_boundaries) + 1)
 
     L = - inner(Constant((0,) * v.geometric_dimension()), v) * ds
