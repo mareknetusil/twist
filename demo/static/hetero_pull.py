@@ -98,8 +98,9 @@ class Pull(StaticHyperelasticity):
 
 # Setup the problem
 pull = Pull("DISPLACEMENT BASED FORMULATION")
+material_list, _ = pull.material_model()
 pull.parameters["output_dir"] \
-    = "output/hetero_pull/{}{}".format(pull.material_model())
+    = "output/hetero_pull/({})-({})".format(*material_list)
 
 # Solve the problem
 print(pull)
