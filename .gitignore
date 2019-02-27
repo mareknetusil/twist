@@ -9,5 +9,6 @@
 *.xml
 *.xdmf
 *.h5
+*.txt
 -cbc/twist/sandbox/*
 -demo/twist/results*
