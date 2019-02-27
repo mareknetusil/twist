@@ -158,25 +158,27 @@ class AnisoTest(MaterialModel_Anisotropic):
         self.kinematic_measure = "AnisotropicInvariants"
 
     def strain_energy(self, parameters):
-        J = sqrt(self.I3)
-        I1bar = J**(-2.0/3.0)*self.I1
+        J = fenics.sqrt(self.I3)
+        I1bar = J ** (-2.0 / 3.0) * self.I1
         I4 = self.I4
 
-        mu1, mu2, bulk = parameters['mu1'], parameters['mu2'], parameters['bulk']
-        return mu1*(I1bar - 3.0) + mu2*(I4 - 1.0)**2 + bulk*(J - 1.0)**2
+        mu1, mu2, bulk = parameters['mu1'], parameters['mu2'], parameters[
+            'bulk']
+        return mu1 * (I1bar - 3.0) + mu2 * (I4 - 1.0) ** 2 + bulk * (
+                  J - 1.0) ** 2
 
 
 class GasserHolzapfelOgden(MaterialModel_Anisotropic):
     """ Defines the strain energy function for an anisotropic
     Gasser-Holzapfel-Ogden material """
+
     def model_info(self):
-        self.num_parameters = 5
+        self.num_parameters = 3
         self.kinematic_measure = "AnisotropicInvariants"
 
     def strain_energy(self, parameters):
-        J = sqrt(self.I3)
-        I1bar = J**(-2.0/3.0)*self.I1
+        J = fenics.sqrt(self.I3)
         I4 = self.I4
 
-        mu, k1, k2, bulk = parameters['mu'], parameters['k1'], parameters['k2'], parameters['bulk']
-        return mu*(I1bar - 3.0) + k1/k2*(exp(k2*(I4 - 1.0)**2) - 1.0) + bulk*(J - 1.0)**2
+        k1, k2 = parameters['k1'], parameters['k2']
+        return k1 / k2 * (fenics.exp(k2 * (I4 - 1.0) ** 2) - 1.0)
