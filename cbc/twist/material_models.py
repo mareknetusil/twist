@@ -16,7 +16,9 @@ class LinearElastic(MaterialModel):
     def strain_energy(self, parameters):
         epsilon = self.epsilon
         mu, lmbda = parameters['mu'], parameters['bulk']
-        return lmbda/2*(tr(epsilon)**2) + mu*tr(epsilon*epsilon)
+        return lmbda / 2 * (fenics.tr(epsilon) ** 2) + \
+               mu * fenics.tr(epsilon * epsilon)
+
 
 class StVenantKirchhoff(MaterialModel):
     """Defines the strain energy function for a St. Venant-Kirchhoff
@@ -29,7 +31,8 @@ class StVenantKirchhoff(MaterialModel):
     def strain_energy(self, parameters):
         E = self.E
         mu, lmbda = parameters['mu'], parameters['bulk']
-        return lmbda/2*(tr(E)**2) + mu*tr(E*E)
+        return lmbda / 2 * (fenics.tr(E) ** 2) + mu * fenics.tr(E * E)
+
 
 class MooneyRivlin(MaterialModel):
     """Defines the strain energy function for a (two term)
@@ -40,12 +43,13 @@ class MooneyRivlin(MaterialModel):
         self.kinematic_measure = "CauchyGreenInvariants"
 
     def strain_energy(self, parameters):
-        J = sqrt(self.I3)
-        I1bar = J**(-2.0/3.0)*self.I1
-        I2bar = J**(-4.0/3.0)*self.I2
+        J = fenics.sqrt(self.I3)
+        I1bar = J ** (-2.0 / 3.0) * self.I1
+        I2bar = J ** (-4.0 / 3.0) * self.I2
 
         C1, C2, bulk = parameters['C1'], parameters['C2'], parameters['bulk']
-        return C1*(I1bar - 3) + C2*(I2bar - 3) + bulk*(J - 1.0)**2
+        return C1 * (I1bar - 3) + C2 * (I2bar - 3) + bulk * (J - 1.0) ** 2
+
 
 class neoHookean(MaterialModel):
     """Defines the strain energy function for a neo-Hookean
@@ -56,15 +60,15 @@ class neoHookean(MaterialModel):
         self.kinematic_measure = "CauchyGreenInvariants"
 
     def strain_energy(self, parameters):
-        #TODO: Model should be different for the U and UP formulation
+        # TODO: Model should be different for the U and UP formulation
 
-        J = sqrt(self.I3)
-        I1bar = J**(-2.0/3.0)*self.I1
+        J = fenics.sqrt(self.I3)
+        I1bar = J ** (-2.0 / 3.0) * self.I1
         I1 = self.I1
 
         half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
-        return half_nkT*(I1bar - 3.0) + bulk*(J - 1.0)**2
-        #return half_nkT*(I1bar - 3.0)
+        return half_nkT * (I1bar - 3.0) + bulk * (J - 1.0) ** 2
+        # return half_nkT*(I1bar - 3.0)
 
 
 class Isihara(MaterialModel):
@@ -75,14 +79,15 @@ class Isihara(MaterialModel):
         self.kinematic_measure = "CauchyGreenInvariants"
 
     def strain_energy(self, parameters):
-        J = sqrt(self.I3)
-        I1bar = J**(-2.0/3.0)*self.I1
-        I2bar = J**(-4.0/3.0)*self.I2
+        J = fenics.sqrt(self.I3)
+        I1bar = J ** (-2.0 / 3.0) * self.I1
+        I2bar = J ** (-4.0 / 3.0) * self.I2
 
         C10, C01, C20, bulk = parameters['C10'], parameters['C01'], \
-                 parameters['C20'], parameters['bulk']
-        return C10*(I1bar - 3) + C01*(I2bar - 3) \
-                 + C20*(I2bar - 3)**2 + bulk*(J - 1.0)**2
+                              parameters['C20'], parameters['bulk']
+        return C10 * (I1bar - 3) + C01 * (I2bar - 3) \
+               + C20 * (I2bar - 3) ** 2 + bulk * (J - 1.0) ** 2
+
 
 class Biderman(MaterialModel):
     """Defines the strain energy function for a Biderman material"""
@@ -92,14 +97,17 @@ class Biderman(MaterialModel):
         self.kinematic_measure = "CauchyGreenInvariants"
 
     def strain_energy(self, parameters):
-        J = sqrt(self.I3)
-        I1bar = J**(-2.0/3.0)*self.I1
-        I2bar = J**(-4.0/3.0)*self.I2
+        J = fenics.sqrt(self.I3)
+        I1bar = J ** (-2.0 / 3.0) * self.I1
+        I2bar = J ** (-4.0 / 3.0) * self.I2
 
         C10, C01, C20, C30, bulk = parameters['C10'], parameters['C01'], \
-                parameters['C20'], parameters['C30'], parameters['bulk']
-        return C10*(I1bar - 3) + C01*(I2bar - 3) \
-                + C20*(I2bar - 3)**2 + C30(I1bar - 3)**3 + bulk*(J - 1.0)**2
+                                   parameters['C20'], parameters['C30'], \
+                                   parameters['bulk']
+        return C10 * (I1bar - 3) + C01 * (I2bar - 3) \
+               + C20 * (I2bar - 3) ** 2 + C30(I1bar - 3) ** 3 + bulk * (
+                         J - 1.0) ** 2
+
 
 class GentThomas(MaterialModel):
     """Defines the strain energy function for a Gent-Thomas
@@ -114,7 +122,8 @@ class GentThomas(MaterialModel):
         I2 = self.I2
 
         C1, C2 = parameters['C1'], parameters['C2']
-        return C1*(I1 - 3) + C2*ln(I2/3)
+        return C1 * (I1 - 3) + C2 * ln(I2 / 3)
+
 
 class Ogden(MaterialModel):
     """Defines the strain energy function for a (six parameter) Ogden
@@ -129,11 +138,14 @@ class Ogden(MaterialModel):
         l2 = self.l2
         l3 = self.l3
 
-        alpha1, alpha2, alpha3, mu1, mu2, mu3 = parameters['alpha1'], parameters['alpha2'], \
-            parameters['alpha3'], parameters['mu1'], parameters['mu2'], parameters['mu3']
-        return mu1/alpha1*(l1**alpha1 + l2**alpha1 + l3**alpha1 - 3) \
-            +  mu2/alpha2*(l1**alpha2 + l2**alpha2 + l3**alpha2 - 3) \
-            +  mu3/alpha3*(l1**alpha3 + l2**alpha3 + l3**alpha3 - 3)
+        alpha1, alpha2, alpha3, mu1, mu2, mu3 = parameters['alpha1'], \
+                                                parameters['alpha2'], \
+                                                parameters['alpha3'], \
+                                                parameters['mu1'], parameters[
+                                                    'mu2'], parameters['mu3']
+        return mu1 / alpha1 * (l1 ** alpha1 + l2 ** alpha1 + l3 ** alpha1 - 3) \
+               + mu2 / alpha2 * (l1 ** alpha2 + l2 ** alpha2 + l3 ** alpha2 - 3) \
+               + mu3 / alpha3 * (l1 ** alpha3 + l2 ** alpha3 + l3 ** alpha3 - 3)
 
 
 class AnisoTest(MaterialModel_Anisotropic):

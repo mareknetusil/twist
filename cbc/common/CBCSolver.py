@@ -19,7 +19,7 @@ class CBCSolver:
         self._progress = None
         self._cpu_time = time()
 
-    #--- Functions that must be overloaded by subclasses ---
+    # --- Functions that must be overloaded by subclasses ---
 
     def solve():
         error("solve() function not implemented by solver.")
@@ -27,7 +27,7 @@ class CBCSolver:
     def __str__():
         error("__str__ not implemented by solver.")
 
-    #--- Useful functions for solvers ---
+    # --- Useful functions for solvers ---
 
     def _end_time_step(self, t, T):
         "Call at end of time step"
@@ -38,8 +38,9 @@ class CBCSolver:
         self._cpu_time = cpu_time
 
         # Write some useful information
-        s = "Time step %d (t = %g) finished in %g seconds." % (self._time_step, t, elapsed_time)
-        info("\n" + s + "\n" + len(s)*"-" + "\n")
+        s = "Time step %d (t = %g) finished in %g seconds." % (
+        self._time_step, t, elapsed_time)
+        info("\n" + s + "\n" + len(s) * "-" + "\n")
 
         # Update progress bar
         if self._progress is None:
@@ -50,11 +51,12 @@ class CBCSolver:
         self._time_step += 1
 
         ## Store solution
-        #if self.parameters["save_solution"]:
+        # if self.parameters["save_solution"]:
         #    self.velocity_series.store(self.u1.vector(), t)
         #    self.pressure_series.store(self.p1.vector(), t)
 
-#--- Useful functions for solvers (non-member functions) ---
+
+# --- Useful functions for solvers (non-member functions) ---
 
 def create_dirichlet_conditions(values, boundaries, function_space):
     """Create Dirichlet boundary conditions for given boundary values,
@@ -62,7 +64,8 @@ def create_dirichlet_conditions(values, boundaries, function_space):
 
     # Check that the size matches
     if len(values) != len(boundaries):
-        error("The number of Dirichlet values does not match the number of Dirichlet boundaries.")
+        error(
+            "The number of Dirichlet values does not match the number of Dirichlet boundaries.")
 
     info("Creating %d Dirichlet boundary condition(s)." % len(values))
 
@@ -80,8 +83,7 @@ def create_dirichlet_conditions(values, boundaries, function_space):
         else:
             temp_function_space = function_space
 
-
-         # Case 0: boundary is a string
+        # Case 0: boundary is a string
         if isinstance(boundary, str):
             boundary = CompiledSubDomain(boundary)
             bc = DirichletBC(temp_function_space, value, boundary)
@@ -103,6 +105,7 @@ def create_dirichlet_conditions(values, boundaries, function_space):
         bcs.append(bc)
 
     return bcs
+
 
 def create_initial_condition(value, function_space):
     """Create initial condition from given user data (with intelligent
