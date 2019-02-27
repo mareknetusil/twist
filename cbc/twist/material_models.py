@@ -1,12 +1,37 @@
 __author__ = "Harish Narayanan"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
-__license__  = "GNU GPL Version 3 or any later version"
+__license__ = "GNU GPL Version 3 or any later version"
 
-from dolfin import *
+import fenics
 from .material_model_base import MaterialModel, MaterialModel_Anisotropic
 
-class LinearElastic(MaterialModel):
-    """Defines the strain energy function for a linear elastic
+
+class LinearGeneral(MaterialModel):
+    """Defines the strain energy function for a general linear elastic
+    material"""
+
+    def model_info(self):
+        self.num_parameters = 1
+        self.kinematic_measure = "InfinitesimalStrain"
+
+    def strain_energy(self, parameters):
+        i, j, k, l = fenics.indices(4)
+        eps = self.epsilon
+        A = self.parameters['A']
+        return 0.5 * eps[i, j] * A[i, j, k, l] * eps[k, l]
+
+    def second_pk_stress(self, u):
+        self._construct_local_kinematics(u)
+
+        i, j, k, l = fenics.indices(4)
+        eps = self.epsilon
+        A = self.parameters['A']
+        S_ij = A[i, j, k, l] * eps[k, l]
+        return fenics.as_tensor(S_ij, (i, j))
+
+
+class LinearIsotropic(MaterialModel):
+    """Defines the strain energy function for a linear elastic isotropic
     material"""
 
     def model_info(self):
