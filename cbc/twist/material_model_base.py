@@ -36,9 +36,9 @@ class MaterialModelInterface():
         T = (1 / J) * P * F.T
 
         if self.kinematic_measure == "InfinitesimalStrain":
-            return S
-        else:
             return P
+        else:
+            return T
 
     def __add__(self, other):
         return MaterialModelSum(self, other)
