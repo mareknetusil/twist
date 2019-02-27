@@ -1,14 +1,34 @@
 __author__ = "Anders Logg"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
-__license__  = "GNU GPL Version 3 or any later version"
+__license__ = "GNU GPL Version 3 or any later version"
 
 # Last changed: 2012-02-21
 
 from time import time
+from fenics import Parameters
 from dolfin import info, error, Progress
 from dolfin import CompiledSubDomain, interpolate
 from dolfin import SubDomain, DirichletBC, Constant, Expression
 from dolfin.cpp import GenericFunction
+
+
+def default_parameters():
+    """Return default solver parameters."""
+    p = Parameters("solver_parameters")
+    p.add("output_dir", "output")
+    p.add("plot_solution", True)
+    p.add("save_solution", True)
+    p.add("store_solution_data", False)
+    p.add("element_degree", 2)
+    p.add("problem_formulation", 'displacement')
+    new = Parameters("newton_solver")
+    new.add("value", 1.0)
+    new.add("adaptive", True)
+    new.add("loading_number_of_steps", 1)
+    p.add(new)
+
+    return p
+
 
 class CBCSolver:
     "Base class for all solvers"

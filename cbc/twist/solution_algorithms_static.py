@@ -19,21 +19,21 @@ solvers.parameters['form_compiler']['optimize'] = True
 solvers.parameters['form_compiler']['quadrature_degree'] = 4
 
 
-def default_parameters():
-    """Return default solver parameters."""
-    p = fenics.Parameters("solver_parameters")
-    p.add("plot_solution", True)
-    p.add("save_solution", True)
-    p.add("store_solution_data", False)
-    p.add("element_degree", 2)
-    p.add("problem_formulation", 'displacement')
-    new = fenics.Parameters("newton_solver")
-    new.add("value", 1.0)
-    new.add("adaptive", True)
-    new.add("loading_number_of_steps", 1)
-    p.add(new)
-
-    return p
+# def default_parameters():
+#     """Return default solver parameters."""
+#     p = fenics.Parameters("solver_parameters")
+#     p.add("plot_solution", True)
+#     p.add("save_solution", True)
+#     p.add("store_solution_data", False)
+#     p.add("element_degree", 2)
+#     p.add("problem_formulation", 'displacement')
+#     new = fenics.Parameters("newton_solver")
+#     new.add("value", 1.0)
+#     new.add("adaptive", True)
+#     new.add("loading_number_of_steps", 1)
+#     p.add(new)
+#
+#     return p
 
 
 class StaticMomentumBalanceSolver_U(CBCSolver):
@@ -120,14 +120,17 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
 
         # Store solution (for plotting)
         if self.parameters["save_solution"]:
-            displacement_file = fenics.XDMFFile("displacement.xdmf")
+            dir = self.parameters["output_dir"]
+            displacement_file \
+                = fenics.XDMFFile("{}/displacement.xdmf".format(dir))
             u.rename('u', "displacement")
             displacement_file.write(u)
             # displacement_file << u
 
         # Store solution data
         if self.parameters["store_solution_data"]:
-            displacement_series = fenics.TimeSeries("displacement")
+            displacement_series \
+                = fenics.TimeSeries("{}/displacement".format(dir))
             displacement_series.store(u.vector(), 0.0)
 
         return u

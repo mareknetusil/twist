@@ -13,21 +13,21 @@ from cbc.twist.kinematics import Grad, DeformationGradient, Jacobian
 from sys import exit
 from numpy import array, loadtxt, linalg
 
-def default_parameters():
-    "Return default solver parameters."
-    p = Parameters("solver_parameters")
-    p.add("plot_solution", True)
-    p.add("save_solution", True)
-    p.add("store_solution_data", False)
-    p.add("element_degree",2)
-    p.add("problem_formulation",'displacement')
-    rel = Parameters("newton_solver")
-    rel.add("value", 1.0)
-    rel.add("adaptive", True)
-    rel.add("loading_number_of_steps", 1)
-    p.add(rel)
-
-    return p
+# def default_parameters():
+#     "Return default solver parameters."
+#     p = Parameters("solver_parameters")
+#     p.add("plot_solution", True)
+#     p.add("save_solution", True)
+#     p.add("store_solution_data", False)
+#     p.add("element_degree",2)
+#     p.add("problem_formulation",'displacement')
+#     rel = Parameters("newton_solver")
+#     rel.add("value", 1.0)
+#     rel.add("adaptive", True)
+#     rel.add("loading_number_of_steps", 1)
+#     p.add(rel)
+#
+#     return p
 
 
 class CG1MomentumBalanceSolver(CBCSolver):

@@ -79,11 +79,10 @@ class TwistTest(StaticHyperelasticity):
 
 
 # Setup the problem
-
-twist = Twist()
-twist.name_method("DISPLACEMENT BASED FORMULATION")
-
+twistTest = TwistTest("DISPLACEMENT BASED FORMULATION")
+twistTest.parameters["output_dir"] \
+    = "output/twist/{}".format(twistTest.material_model())
 
 # Solve the problem
-print(twist)
-twist.solve()
+print(twistTest)
+twistTest.solve()

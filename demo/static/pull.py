@@ -90,13 +90,12 @@ class Pull(StaticHyperelasticity):
         return "A hyperelastic cube stretching/compression solved by " + self.method
 
 
-
 # Setup the problem
-pull = Pull()
-pull.name_method("DISPLACEMENT BASED FORMULATION")
-#pull.parameters['problem_formulation'] = 'mixed_up'
+pull = Pull("DISPLACEMENT BASED FORMULATION")
+pull.parameters["output_dir"] \
+    = "output/pull/{}".format(pull.material_model())
+# pull.parameters['problem_formulation'] = 'mixed_up'
 
 # Solve the problem
 print(pull)
 pull.solve()
-

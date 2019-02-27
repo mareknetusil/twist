@@ -86,19 +86,20 @@ class Pull(StaticHyperelasticity):
         material_list = [materials[2], materials[6]]
         subdomains_list = [(subdomains, 0), (subdomains, 1)]
 
-        return (material_list, subdomains_list)
+        return material_list, subdomains_list
 
     def name_method(self, method):
         self.method = method
 
     def __str__(self):
-        return "A hyperelastic heterogeneous cube stretching/compression solved by " + self.method
-
+        return "A hyperelastic heterogeneous cube stretching/compression " \
+               "solved by " + self.method
 
 
 # Setup the problem
-pull = Pull()
-pull.name_method("DISPLACEMENT BASED FORMULATION")
+pull = Pull("DISPLACEMENT BASED FORMULATION")
+pull.parameters["output_dir"] \
+    = "output/hetero_pull/{}{}".format(pull.material_model())
 
 # Solve the problem
 print(pull)
