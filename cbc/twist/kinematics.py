@@ -36,7 +36,7 @@ def Jacobian(u):
 # Right Cauchy-Green tensor
 def RightCauchyGreen(u):
     F = DeformationGradient(u)
-    return F.T*F
+    return variable(F.T*F)
 
 # Green-Lagrange strain tensor
 def GreenLagrangeStrain(u):
