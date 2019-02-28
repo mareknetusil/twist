@@ -1,14 +1,34 @@
 __author__ = "Anders Logg"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
-__license__  = "GNU GPL Version 3 or any later version"
+__license__ = "GNU GPL Version 3 or any later version"
 
 # Last changed: 2012-02-21
 
 from time import time
+from fenics import Parameters
 from dolfin import info, error, Progress
 from dolfin import CompiledSubDomain, interpolate
 from dolfin import SubDomain, DirichletBC, Constant, Expression
 from dolfin.cpp import GenericFunction
+
+
+def default_parameters():
+    """Return default solver parameters."""
+    p = Parameters("solver_parameters")
+    p.add("output_dir", "output")
+    p.add("plot_solution", True)
+    p.add("save_solution", True)
+    p.add("store_solution_data", False)
+    p.add("element_degree", 2)
+    p.add("problem_formulation", 'displacement')
+    new = Parameters("newton_solver")
+    new.add("value", 1.0)
+    new.add("adaptive", True)
+    new.add("loading_number_of_steps", 1)
+    p.add(new)
+
+    return p
+
 
 class CBCSolver:
     "Base class for all solvers"
@@ -19,7 +39,7 @@ class CBCSolver:
         self._progress = None
         self._cpu_time = time()
 
-    #--- Functions that must be overloaded by subclasses ---
+    # --- Functions that must be overloaded by subclasses ---
 
     def solve():
         error("solve() function not implemented by solver.")
@@ -27,7 +47,7 @@ class CBCSolver:
     def __str__():
         error("__str__ not implemented by solver.")
 
-    #--- Useful functions for solvers ---
+    # --- Useful functions for solvers ---
 
     def _end_time_step(self, t, T):
         "Call at end of time step"
@@ -38,8 +58,9 @@ class CBCSolver:
         self._cpu_time = cpu_time
 
         # Write some useful information
-        s = "Time step %d (t = %g) finished in %g seconds." % (self._time_step, t, elapsed_time)
-        info("\n" + s + "\n" + len(s)*"-" + "\n")
+        s = "Time step %d (t = %g) finished in %g seconds." % (
+        self._time_step, t, elapsed_time)
+        info("\n" + s + "\n" + len(s) * "-" + "\n")
 
         # Update progress bar
         if self._progress is None:
@@ -50,11 +71,12 @@ class CBCSolver:
         self._time_step += 1
 
         ## Store solution
-        #if self.parameters["save_solution"]:
+        # if self.parameters["save_solution"]:
         #    self.velocity_series.store(self.u1.vector(), t)
         #    self.pressure_series.store(self.p1.vector(), t)
 
-#--- Useful functions for solvers (non-member functions) ---
+
+# --- Useful functions for solvers (non-member functions) ---
 
 def create_dirichlet_conditions(values, boundaries, function_space):
     """Create Dirichlet boundary conditions for given boundary values,
@@ -62,7 +84,8 @@ def create_dirichlet_conditions(values, boundaries, function_space):
 
     # Check that the size matches
     if len(values) != len(boundaries):
-        error("The number of Dirichlet values does not match the number of Dirichlet boundaries.")
+        error(
+            "The number of Dirichlet values does not match the number of Dirichlet boundaries.")
 
     info("Creating %d Dirichlet boundary condition(s)." % len(values))
 
@@ -80,8 +103,7 @@ def create_dirichlet_conditions(values, boundaries, function_space):
         else:
             temp_function_space = function_space
 
-        
-         # Case 0: boundary is a string
+        # Case 0: boundary is a string
         if isinstance(boundary, str):
             boundary = CompiledSubDomain(boundary)
             bc = DirichletBC(temp_function_space, value, boundary)
@@ -104,6 +126,7 @@ def create_dirichlet_conditions(values, boundaries, function_space):
 
     return bcs
 
+
 def create_initial_condition(value, function_space):
     """Create initial condition from given user data (with intelligent
     handling of different kinds of input)."""
@@ -117,5 +140,5 @@ def create_initial_condition(value, function_space):
         return create_initial_condition(Expression(value), function_space)
 
     # Try wrapping input as a Constant
-    print value
+    print(value)
     return create_initial_condition(Constant(value), function_space)

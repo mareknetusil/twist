@@ -2,14 +2,16 @@ __author__ = "Harish Narayanan"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
 __license__ = "GNU GPL Version 3 or any later version"
 
-from dolfin import *
+import fenics
 from cbc.common import CBCProblem
 from cbc.twist.solution_algorithms_static import StaticMomentumBalanceSolver_U
 from cbc.twist.solution_algorithms_dynamic import CG1MomentumBalanceSolver
-from cbc.twist.solution_algorithms_static import \
-    default_parameters as solver_parameters_static
-from cbc.twist.solution_algorithms_dynamic import \
-    default_parameters as solver_parameters_dynamic
+# from cbc.twist.solution_algorithms_static import \
+#     default_parameters as solver_parameters_static
+# from cbc.twist.solution_algorithms_dynamic import \
+#     default_parameters as solver_parameters_dynamic
+from cbc.common.CBCSolver import default_parameters as solver_parameters_static
+solver_parameters_dynamic = solver_parameters_static
 from cbc.twist.kinematics import GreenLagrangeStrain
 
 
@@ -30,7 +32,7 @@ class StaticHyperelasticity(CBCProblem):
         if formulation == 'displacement':
             self.solver = StaticMomentumBalanceSolver_U(self, self.parameters)
         else:
-            error("%s formulation not supported." % formulation)
+            fenics.error("%s formulation not supported." % formulation)
 
         # Call solver
         return self.solver.solve()
@@ -45,8 +47,7 @@ class StaticHyperelasticity(CBCProblem):
         return []
 
     def dirichlet_values(self):
-        """Return Dirichlet boundary conditions for the displacment
-      field"""
+        """Return Dirichlet boundary conditions for the displacement field"""
         return []
 
     def dirichlet_boundaries(self):
@@ -77,10 +78,10 @@ class StaticHyperelasticity(CBCProblem):
             fpk_list = []
             material_list, subdomains_list = material_model
             for material in material_list:
-                fpk_list.append(material.FirstPiolaKirchhoffStress(u))
-            return (fpk_list, subdomains_list)
+                fpk_list.append(material.first_pk_stress(u))
+            return fpk_list, subdomains_list
         else:
-            return material_model.FirstPiolaKirchhoffStress(u)
+            return material_model.first_pk_stress(u)
 
     def second_pk_stress(self, u):
         """Return the second Piola-Kirchhoff stress tensor, S, given a
@@ -90,10 +91,10 @@ class StaticHyperelasticity(CBCProblem):
             spk_list = []
             material_list, subdomains_list = material_model
             for material in material_list:
-                spk_list.append(material.SecondPiolaKirchhoffStress(u))
-            return (spk_list, subdomains_list)
+                spk_list.append(material.second_pk_stress(u))
+            return spk_list, subdomains_list
         else:
-            return self.material_model().SecondPiolaKirchhoffStress(u)
+            return self.material_model().second_pk_stress(u)
 
     def strain_energy(self, u):
         """Return the strain (potential) energy density given a displacement
@@ -103,16 +104,19 @@ class StaticHyperelasticity(CBCProblem):
         E = GreenLagrangeStrain(u)
         if isinstance(S, tuple):
             S_list, subdomains_list = S
-            V = FunctionSpace(u.function_space().mesh(), 'DG', 0)
-            temp = Function(V)
-            psi = Function(V)
+            V = fenics.FunctionSpace(u.function_space().mesh(), 'DG', 0)
+            temp = fenics.Function(V)
+            psi = fenics.Function(V)
             subdomains = subdomains_list[0]
             for cell_no in range(len(subdomains[0].array())):
                 subdomain_no = subdomains[0].array()[cell_no]
-                temp = project(0.5 * inner(S_list[int(subdomain_no - 1)], E), V)
+                temp = fenics.project(0.5 *
+                                      fenics.inner(S_list[int(subdomain_no - 1)],
+                                                   E),
+                                      V)
                 psi.vector()[cell_no] = temp.vector()[cell_no][0]
         else:
-            psi = 0.5 * inner(S, E)
+            psi = 0.5 * fenics.inner(S, E)
         return psi
 
     def functional(self, u):
@@ -222,8 +226,8 @@ class Hyperelasticity(StaticHyperelasticity):
         """Return the kinetic energy given a velocity field, v"""
 
         rho0 = self.reference_density()
-        ke = assemble(0.5 * rho0 * inner(v, v) * dx,
-                      mesh=v.function_space().mesh())
+        ke = fenics.assemble(0.5 * rho0 * fenics.inner(v, v) * fenics.dx,
+                             mesh=v.function_space().mesh())
         return ke
 
     def _create_solver(self):
@@ -235,8 +239,8 @@ class Hyperelasticity(StaticHyperelasticity):
         # Select solver
         scheme = self.time_stepping()
         if scheme is "CG1":
-            info("Using CG1 time-stepping.")
+            fenics.info("Using CG1 time-stepping.")
             self.solver = CG1MomentumBalanceSolver(self, self.parameters)
         else:
-            error("%s time-stepping scheme not supported." % str(
+            fenics.error("%s time-stepping scheme not supported." % str(
                 self.time_stepping()))

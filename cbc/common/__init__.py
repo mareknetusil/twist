@@ -1,2 +1,2 @@
-from CBCSolver import *
-from CBCProblem import *
+from .CBCSolver import *
+from .CBCProblem import *

@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "Harish Narayanan"
 __copyright__ = "Copyright (C) 2009 Simula Research Laboratory and %s" % __author__
 __license__  = "GNU GPL Version 3 or any later version"
@@ -43,6 +44,5 @@ class FishyFlow(Hyperelasticity):
 # Setup and solve problem
 problem = FishyFlow()
 problem.parameters['element_degree'] = 1
-print problem
+print(problem)
 problem.solve()
-interactive()

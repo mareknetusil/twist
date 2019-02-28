@@ -20,7 +20,7 @@ def default_solver_parameters():
    p.add(new)
 
    return p
-    
+
 
 
 class AugmentedNewtonSolver():
@@ -45,7 +45,7 @@ class AugmentedNewtonSolver():
 
       relaxation = self.parameters["newton_solver"]
       n = relaxation["loading_number_of_steps"]
-       
+
 
       # Choose the solver implementation - adaptive vs. fenics default
 
@@ -78,7 +78,7 @@ class AugmentedNewtonSolver():
                for i in range(n+1):
                   self.load_increment.assign(i*dtheta)
                   # FIXME: choose some log level for this output
-                  print 'theta = ', float(self.load_increment)
+                  print('theta = ', float(self.load_increment))
                   solver.solve()
 
          else:
@@ -90,10 +90,10 @@ class AugmentedNewtonSolver():
                # Incremental loading implementation
                dtheta = 1.0/n              # define the increment
                # Solve the problem for the incremental coefficient ranging from 0.0 to 1.0
-               for i in range(n+1):            
+               for i in range(n+1):
                   self.load_increment.assign(i*dtheta)
                   # FIXME: choose some log level for this output
-                  print 'theta = ', float(self.load_increment)
+                  print('theta = ', float(self.load_increment))
                   self.adaptive()
 
       # Non-adaptive case - solve each load increment with the NonlinearVariationalSolver
@@ -113,10 +113,10 @@ class AugmentedNewtonSolver():
             # Incremental loading implementation
             dtheta = 1.0/n              # define the increment
             # Solve the problem for the incremental coefficient ranging from 0.0 to 1.0
-            for i in range(n+1):            
+            for i in range(n+1):
                self.load_increment.assign(i*dtheta)
                # FIXME: choose some log level for this output
-               print 'theta = ', float(self.load_increment)
+               print('theta = ', float(self.load_increment))
                solver.solve()
 
 
@@ -144,7 +144,7 @@ class AugmentedNewtonSolver():
       res_norm = b.norm('l2')
 
       # Log output - similar to the dolfin one
-      print '  Newton iteration{0:2d}: r (abs) = {1:1.3e}'.format(nIter,res_norm)
+      print('  Newton iteration{0:2d}: r (abs) = {1:1.3e}'.format(nIter,res_norm))
 
 
       # Newton iterations
@@ -169,7 +169,7 @@ class AugmentedNewtonSolver():
          for bc in self.bc:
             bc.apply(b, x)
          res_norm2 = b.norm('l2')
-         
+
          # If residual R_k > R_(k+1), decrease the relaxation parameter by half
          while res_norm2 >= res_norm:
             omega = omega*0.5
@@ -178,8 +178,8 @@ class AugmentedNewtonSolver():
             for bc in self.bc:
                bc.apply(b, x)
             res_norm2 = norm(b, 'l2')
-         
+
          # Update the residual and print the log output
          res_norm = res_norm2
-         print '  Newton iteration{0:2d}: r (abs) = {1:1.3e} \
-               relaxation = {2:1.2e}'.format(nIter,res_norm,omega)
+         print('  Newton iteration{0:2d}: r (abs) = {1:1.3e} \
+               relaxation = {2:1.2e}'.format(nIter,res_norm,omega))

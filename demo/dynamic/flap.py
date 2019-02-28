@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "Harish Narayanan"
 __copyright__ = "Copyright (C) 2010 Simula Research Laboratory and %s" % __author__
 __license__  = "GNU GPL Version 3 or any later version"
@@ -56,5 +57,5 @@ problem = Obstruction()
 problem.parameters['element_degree'] = 1
 
 # Solve problem
-print problem
+print(problem)
 problem.solve()

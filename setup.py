@@ -13,4 +13,4 @@ setup(name = "CBC.Solve",
                   "cbc.twist"],
       package_dir = {"cbc": "cbc"},
       scripts = [],
-      data_files = [])
+      data_files = [], requires=['fenics'])

@@ -11,7 +11,7 @@ class CBCProblem:
     """Base class for all problems"""
 
     def __init__(self):
-        """"Constructor"""
+        """Constructor"""
         pass
 
     def __str__(self):
