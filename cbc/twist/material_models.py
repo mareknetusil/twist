@@ -82,18 +82,24 @@ class neoHookean(MaterialModel):
 
     def model_info(self):
         self.num_parameters = 2
-        self.kinematic_measure = "CauchyGreenInvariants"
+        # self.kinematic_measure = "CauchyGreenInvariants"
+        self.kinematic_measure = "RightCauchyGreen"
 
     def strain_energy(self, parameters):
         # TODO: Model should be different for the U and UP formulation
 
-        J = fenics.sqrt(self.I3)
-        I1bar = J ** (-2.0 / 3.0) * self.I1
-        I1 = self.I1
-
-        half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
-        return half_nkT * (I1bar - 3.0) + bulk * (J - 1.0) ** 2
+        # J = fenics.sqrt(self.I3)
+        # I1bar = J ** (-2.0 / 3.0) * self.I1
+        # I1 = self.I1
+        #
+        # half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
+        # return half_nkT * (I1bar - 3.0) + bulk * (J - 1.0) ** 2
         # return half_nkT*(I1bar - 3.0)
+
+        J = fenics.sqrt(fenics.det(self.C))
+        Cbar = J ** (-2.0 / 3.0) * self.C
+        half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
+        return half_nkT * (fenics.tr(Cbar) - 3.0) + bulk * (J - 1.0) ** 2
 
 
 class Isihara(MaterialModel):

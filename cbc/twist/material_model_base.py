@@ -40,6 +40,10 @@ class MaterialModelInterface():
         else:
             return T
 
+    def elasticity_tensor(self, u):
+        """Elasticity tensor wrt referential configuration"""
+        pass
+
     def __add__(self, other):
         return MaterialModelSum(self, other)
 
@@ -61,6 +65,11 @@ class MaterialModelSum(MaterialModelInterface):
         S_left = self.left.second_pk_stress(u)
         S_right = self.right.second_pk_stress(u)
         return S_left + S_right
+
+    def elasticity_tensor(self, u):
+        c_left = self.left.elasticity_tensor(u)
+        c_right = self.right.elasticity_tensor(u)
+        return c_left + c_right
 
     def __str__(self):
         return "{} + {}".format(self.left, self.right)
@@ -164,25 +173,15 @@ class MaterialModel(MaterialModelInterface):
                 psi, l3)
         return S
 
-    #def first_pk_stress(self, u):
-    #    S = self.SecondPiolaKirchhoffStress(u)
-    #    F = self.F
-    #    P = F * S
+    def elasticity_tensor(self, u):
+        self._construct_local_kinematics(u)
+        S = self.second_pk_stress(u)
+        if self.kinematic_measure == "RightCauchyGreen":
+            C = self.C
+            return 2 * diff(S, C)
+        else:
+            return None
 
-    #    if self.kinematic_measure == "InfinitesimalStrain":
-    #        return S
-    #    else:
-    #        return P
-
-    #def cauchy_stress(self, u):
-    #    P = self.first_pk_stress(u)
-    #    F = self.F
-    #    J = Jacobian(u)
-    #    T = (1 / J) * P * F.T
-    #    if self.kinematic_measure == "InfinitesimalStrain":
-    #        return P
-    #    else:
-    #        return T
 
 
 class MaterialModel_Anisotropic(MaterialModel):

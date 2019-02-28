@@ -9,15 +9,16 @@ from sys import argv
 
 
 
-class Pull(StaticHyperelasticity):
+class LinearPull(StaticHyperelasticity):
     """ DEMO - Hyperelastic cube is stretched/compressed by a traction acting
     on one side """
 
-    def __init__(self, name):
+    def __init__(self, name, A = None):
         StaticHyperelasticity.__init__(self)
         n = 8
         self._mesh = fenics.UnitCubeMesh(n, n, n)
         self.name_method(name)
+        self.A = self._create_A() if A is None else A
 
     def mesh(self):
         return self._mesh
@@ -47,6 +48,12 @@ class Pull(StaticHyperelasticity):
     def material_model(self):
         # Material parameters can either be numbers or spatially
         # varying fields. For example,
+
+        mat = LinearGeneral({'A': self.A})
+        return mat
+
+    @staticmethod
+    def _create_A():
         mu = 1e2
         lmbda = 1e2
 
@@ -55,10 +62,7 @@ class Pull(StaticHyperelasticity):
         A_ijkl = lmbda * I[i, j] * I[k, l] \
                  + mu * (I[i, k] * I[j, l] + I[i, l] * I[j, k]
                          - 2/3.0 * I[i, j] * I[k, l])
-        A = fenics.as_tensor(A_ijkl, (i, j, k, l))
-
-        mat = LinearGeneral({'A': A})
-        return mat
+        return fenics.as_tensor(A_ijkl, (i, j, k, l))
 
 
     def name_method(self, method):
@@ -68,12 +72,24 @@ class Pull(StaticHyperelasticity):
         return "A hyperelastic cube stretching/compression solved by " + self.method
 
 
-# Setup the problem
-pull = Pull("DISPLACEMENT BASED FORMULATION")
-pull.parameters["output_dir"] \
-    = "output/pull/{}".format(pull.material_model())
-# pull.parameters['problem_formulation'] = 'mixed_up'
+def main():
+    nH = neoHookean({'half_nkT': 1e3, 'bulk': 1e3})
 
-# Solve the problem
-print(pull)
-pull.solve()
+    # Setup the problem
+    linear = LinearPull("DISPLACEMENT BASED FORMULATION")
+    # pull.parameters['problem_formulation'] = 'mixed_up'
+
+    V = fenics.VectorFunctionSpace(linear.mesh(), 'CG', 2)
+    u = fenics.Function(V)
+    A = nH.elasticity_tensor(u)
+    linear.A = A
+
+    linear.parameters["output_dir"] \
+        = "output/pull/{}".format(linear.material_model())
+
+    # Solve the problem
+    print(linear)
+    linear.solve()
+
+if __name__ == "__main__":
+    main()
