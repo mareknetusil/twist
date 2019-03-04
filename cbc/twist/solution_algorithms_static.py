@@ -55,17 +55,25 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         print("Number of DOFs = %d" % vector.space.dim())
 
         # Driving forces
-        B = problem.body_force()
+        # B = problem.body_force()
+        # B_div = problem.body_force_div()
         P = problem.first_pk_stress(vector.unknown_displacement)
 
         # If no body forces are specified, assume it is 0
-        if not B:
-            B = Constant((0,) * vector.test_displacement.geometric_dimension())
+        # if not B:
+        #     B = Constant((0,) * vector.test_displacement.geometric_dimension())
 
         self.theta = Constant(1.0)
 
         L1 = terms.elasticity_displacement(P, vector.test_displacement)
-        L2 = terms.body_force(self.theta * B, vector.test_displacement)
+        # L2 = terms.body_force(self.theta * B, vector.test_displacement)
+        B = problem.body_force()
+        if B:
+            L1 -= self.theta * terms.body_force(B, vector.test_displacement)
+
+        B_div = problem.body_force_div()
+        if B_div:
+            L1 -= self.theta * terms.body_force_div(B_div, vector.test_displacement)
 
         # Add contributions to the form from the Neumann boundary
         # conditions
@@ -82,7 +90,8 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
                                      problem.neumann_boundaries(),
                                      vector.test_displacement, problem.mesh())
 
-        L = L1 - L2 - L3
+        # L = L1 - L2 - L3
+        L = L1 - L3
 
         a = fenics.derivative(L, vector.unknown_displacement,
                               vector.trial_displacement)

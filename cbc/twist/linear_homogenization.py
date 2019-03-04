@@ -1,52 +1,114 @@
-from dolfin import *
-from cbc.common import CBCProblem
-from cbc.common import CBCSolver
-from cbc.twist.solution_algorithms_blocks import FunctionSpace_U, \
-    LinearElasticityTerm, homogenization_rhs, HyperelasticityTerm
+from fenics import *
+# from cbc.common import CBCProblem
+# from cbc.common import CBCSolver
+from cbc.twist.problem_definitions import StaticHyperelasticity
+# from cbc.twist.solution_algorithms_blocks import FunctionSpace_U, \
+#     LinearElasticityTerm, homogenization_rhs, HyperelasticityTerm
+from cbc.twist.material_models import LinearGeneral
+from cbc.twist.function_spaces import FunctionSpace_U
+from cbc.twist.equation_terms import elasticity_displacement, homogenization_rhs, \
+    linear_pk_stress
+from cbc.twist.material_models import LinearGeneral
 import itertools
 
 
-def default_parameters():
-    """Return default parameters for linear homogenization"""
-    p = Parameters("solver_parameters")
-    p.add("plot_solution", True)
-    p.add("save_solution", False)
-    p.add("store_solution_data", False)
-    p.add("element_degree", 2)
+class PeriodicBoundary(SubDomain):
+    def __init__(self, mesh):
+        SubDomain.__init__(self)
+        coors = mesh.coordinates()
+        x_list = coors[:, 0]
+        y_list = coors[:, 1]
+        self.x_min = min(x_list)
+        self.x_max = max(x_list)
+        self.y_min = min(y_list)
+        self.y_max = max(y_list)
+        # self.x_min = 0.0
+        # self.x_max = 1.0
+        # self.y_min = 0.0
+        # self.y_max = 1.0
 
-    return p
+    def inside(self, x, on_boundary):
+        return bool((near(x[0], self.x_min) or near(x[1], self.y_min)) and
+                    (not ((near(x[0], self.x_max) and near(x[1], self.y_min)) or
+                          (near(x[0], self.x_max) and near(x[1], self.y_max))))
+                    and on_boundary)
+
+    def map(self, x, y):
+        x_len = self.x_max - self.x_min
+        y_len = self.y_max - self.y_min
+        if near(x[0], self.x_max) and near(x[1], self.y_max):
+            y[0] = x[0] - x_len
+            y[1] = x[1] - y_len
+        elif near(x[0], self.x_max):
+            y[0] = x[0] - x_len
+            y[1] = x[1]
+        elif near(x[1], self.y_max):
+            y[0] = x[0]
+            y[1] = x[1] - y_len
+        else:
+            y[0] = 1e4
+            x[0] = 1e4
 
 
-class LinearHomogenization(CBCProblem):
+class LinearHomogenization(StaticHyperelasticity):
 
-    def __init__(self):
-        CBCProblem.__init__(self)
+    def __init__(self, elasticity_tensor = None):
+        StaticHyperelasticity.__init__(self)
 
-        self.parameters = default_parameters()
+        self._material = None
+        self.A = elasticity_tensor
+        # self.parameters = default_parameters()
         self._correctors_chi = {}
-        self.solver = None
+        # self.solver = None
         self.indxs = (0, 0)
         self.dim = None
         self.Pi_functions = None
         self._volume = None
 
+    @property
+    def A(self):
+        return self._A
+
+    @A.setter
+    def A(self, elasticity_tensor):
+        self._A = elasticity_tensor
+
+    def material_model(self):
+        self._material = LinearGeneral({'A': self.A})
+        return self._material
+
     def solve(self):
+        """
+        Computes all corrector functions and stores them in _correctors_chi
+        :return: _2-list of correctors
+        """
         self.dim = self.mesh().geometry().dim()
-        self.solver = LinearHomogenizationSolver(self, self.parameters)
+        # self.solver = LinearHomogenizationSolver(self, self.parameters)
         for (i, j) in itertools.product(range(self.dim), range(self.dim)):
             self.indxs = (i, j)
-            self._correctors_chi[(i, j)] = self.solver.solve()
+            self._correctors_chi[(i, j)] = StaticHyperelasticity.solve(self)
         return self._correctors_chi
+    #
+    # def elasticity_tensor(self):
+    #     """Return the elasticity (tangent) tensor.
+    #        IMPLEMENTED BY A USER"""
+    #     pass
+    #
+    # def periodic_boundaries(self):
+    #     """Return the periodic boundary conditions.
+    #        IMPLEMENTED BY A USER"""
+    #     pass
 
-    def elasticity_tensor(self):
-        """Return the elasticity (tangent) tensor.
-           IMPLEMENTED BY A USER"""
+    def body_force_div(self):
+        (m, n) = self.indxs
+        A_mn = homogenization_rhs(self.A, m, n)
+        return A_mn
 
-    def periodic_boundaries(self):
-        """Return the periodic boundary conditions.
-           IMPLEMENTED BY A USER"""
 
     def volume(self):
+        """
+        :return: Volume of the mesh
+        """
         if self._volume is None:
             V = FunctionSpace(self._mesh, 'DG', 0)
             One = project(Constant(1.0), V)
@@ -54,6 +116,9 @@ class LinearHomogenization(CBCProblem):
         return self._volume
 
     def generate_Pi_functions(self):
+        """
+        :return: None
+        """
         self.Pi_functions = []
         for (i, j) in itertools.product(range(self.dim), range(self.dim)):
             val = ["0.0", ] * self.dim
@@ -72,11 +137,13 @@ class LinearHomogenization(CBCProblem):
         return self._correctors_chi[indxs]
 
     def averaged_elasticity_tensor(self):
-        A = self.elasticity_tensor()
+        """
+        :return: Integral avg of the elasticity tensor
+        """
         A_av = {}
         V = FunctionSpace(self._mesh, 'CG', 1)
         for (i,j,k,l) in itertools.product(range(2), range(2), range(2), range(2)):
-            A_ijkl = project(A[i,j,k,l], V)
+            A_ijkl = project(self.A[i,j,k,l], V)
             A_av[(i,j,k,l)] = assemble(A_ijkl*dx)/self.volume()
 
         B = [[[[A_av[(i,j,k,l)] for l in range(2)] for k in range(2)]
@@ -84,13 +151,16 @@ class LinearHomogenization(CBCProblem):
         return as_tensor(B)
 
     def corrector_elasticity_tensor(self):
-        A = self.elasticity_tensor()
+        """
+        :return: Corrector term for the homogenized elasticity tensor
+        """
+        # A = self.elasticity_tensor()
         A_corr = {}
         V = FunctionSpace(self._mesh, 'CG', 1)
         for (i,j,k,l) in itertools.product(range(2), range(2), range(2), range(2)):
             m, n = indices(2)
             chi_kl = self.correctors_chi((k,l))
-            P_ijkl = as_tensor(A[i,j,m,n]*grad(chi_kl)[m,n])
+            P_ijkl = as_tensor(self.A[i,j,m,n]*grad(chi_kl)[m,n])
             A_corr[(i,j,k,l)] = assemble(P_ijkl*dx)/self.volume()
 
         B = [[[[A_corr[(i,j,k,l)] for l in range(2)] for k in range(2)]
@@ -98,6 +168,9 @@ class LinearHomogenization(CBCProblem):
         return as_tensor(B)
 
     def homogenized_elasticity_tensor(self):
+        """
+        :return: A^0
+        """
         A_av = self.averaged_elasticity_tensor()
         A_corr = self.corrector_elasticity_tensor()
         i,j,k,l = indices(4)
@@ -131,46 +204,49 @@ class LinearHomogenization(CBCProblem):
         return "Linear homogenization problem"
 
 
-class LinearHomogenizationSolver(CBCSolver):
-    """Solves the linear homogenization equation"""
-
-    def __init__(self, problem, parameters):
-        """Initialise the solver"""
-
-        # Define function spaces
-        element_degree = parameters['element_degree']
-        pbc = problem.periodic_boundaries()
-        vector = FunctionSpace_U(problem.mesh(), 'CG', element_degree, pbc)
-        print "Number of DOFs = %d" % vector.space.dim()
-
-        problem.generate_Pi_functions()
-
-        self.f_space = vector
-        self.parameters = parameters
-        self.mesh = problem.mesh()
-        self.equation = None
-        self.problem = problem
-
-    def solve(self):
-        """Solve the homogenization problem"""
-
-        # Equation
-        A = self.problem.elasticity_tensor()
-        a = LinearElasticityTerm(A, self.f_space.trial_displacement,
-                                  self.f_space.test_displacement)
-
-        (i, j) = self.problem.indxs
-        A_mn = homogenization_rhs(A, i, j)
-        L = HyperelasticityTerm(A_mn, self.f_space.test_displacement)
-
-        u = self.f_space.unknown_displacement
-        problem = LinearVariationalProblem(a, L, u)
-        solver = LinearVariationalSolver(problem)
-        self.equation = solver
-        solver.solve()
-
-        chi = self.f_space.unknown_displacement.copy(deepcopy=True)
-        return chi
+# class LinearHomogenizationSolver(CBCSolver):
+#     """Solves the linear homogenization equation"""
+#
+#     def __init__(self, problem, parameters):
+#         """Initialise the solver"""
+#
+#         # Define function spaces
+#         element_degree = parameters['element_degree']
+#         pbc = problem.periodic_boundaries()
+#         vector = FunctionSpace_U(problem.mesh(), 'CG', element_degree, pbc)
+#         print "Number of DOFs = %d" % vector.space.dim()
+#
+#         problem.generate_Pi_functions()
+#
+#         self.f_space = vector
+#         self.parameters = parameters
+#         self.mesh = problem.mesh()
+#         self.equation = None
+#         self.problem = problem
+#
+#     def solve(self):
+#         """Solve the homogenization problem"""
+#
+#         # Equation
+#         # a = LinearElasticityTerm(A, self.f_space.trial_displacement,
+#         #                           self.f_space.test_displacement)
+#         # mat = self.problem.material()
+#         # P = mat.first_pk_tensor(self.f_space.trial_displacement)
+#         P = linear_pk_stress(self.problem.A, self.f_space.trial_displacement)
+#         a = elasticity_displacement(P, self.f_space.test_displacement)
+#
+#         (i, j) = self.problem.indxs
+#         A_mn = homogenization_rhs(A, i, j)
+#         L = elasticity_displacement(A_mn, self.f_space.test_displacement)
+#
+#         u = self.f_space.unknown_displacement
+#         problem = LinearVariationalProblem(a, L, u)
+#         solver = LinearVariationalSolver(problem)
+#         self.equation = solver
+#         solver.solve()
+#
+#         chi = self.f_space.unknown_displacement.copy(deepcopy=True)
+#         return chi
 
 
 def function_from_cell_function(values, subdomains):

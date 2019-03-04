@@ -7,11 +7,19 @@ from cbc.common import *
 def body_force(B, v):
     """
     Weak form of the volume forces
-    :param B: body forces
+    :param B: vector
     :param v: displacement test function
     :return: B*v*dx
     """
     return inner(B, v) * dx
+
+def body_force_div(B, v):
+    """
+    :param B: 2nd order tensor
+    :param v: displacement test function
+    :return: B:Grad(v)*dx
+    """
+    return inner(B, Grad(v)) * dx
 
 
 def elasticity_displacement(P, v):
@@ -94,3 +102,44 @@ def neumann_condition(neumann_conditions, neumann_boundaries, v, mesh):
         L += inner(neumann_conditions[i], v) * dsb(i)
 
     return L
+
+
+def linear_pk_stress(A, u):
+    i, j, k, l = indices(4)
+    P_ij = A[i, j, k, l] * grad(u)[k, l]
+    P = as_tensor(P_ij, (i, j))
+    return P
+
+
+def homogenization_rhs(A, m, n):
+    if isinstance(A, tuple):
+        A_list, subdomains_list = A
+        rhs_list = []
+        for (index, A_i) in enumerate(A_list):
+            i, j = indices(2)
+            rhs_ij = A_i[i, j, m, n]
+            retval = as_tensor(rhs_ij, (i, j))
+            rhs_list.append(retval)
+        retval_tuple = (rhs_list, subdomains_list)
+        return retval_tuple
+    else:
+        i, j = indices(2)
+        rhs_ij = A[i, j, m, n]
+        retval = as_tensor(rhs_ij, (i, j))
+        return retval
+def homogenization_rhs(A, m, n):
+    if isinstance(A, tuple):
+        A_list, subdomains_list = A
+        rhs_list = []
+        for (index, A_i) in enumerate(A_list):
+            i, j = indices(2)
+            rhs_ij = A_i[i, j, m, n]
+            retval = as_tensor(rhs_ij, (i, j))
+            rhs_list.append(retval)
+        retval_tuple = (rhs_list, subdomains_list)
+        return retval_tuple
+    else:
+        i, j = indices(2)
+        rhs_ij = A[i, j, m, n]
+        retval = as_tensor(rhs_ij, (i, j))
+        return retval

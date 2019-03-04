@@ -41,6 +41,10 @@ class StaticHyperelasticity(CBCProblem):
         """Return body force, B"""
         return []
 
+    def body_force_div(self):
+        """RHS given as a div of 2nd order tensor"""
+        return []
+
     def body_force_u(self, u):
         # FIXME: This is currently only implemented for the cG(1) solver
         """Return body force, B, depending on displacement u"""
