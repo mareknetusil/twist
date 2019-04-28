@@ -8,7 +8,6 @@ from cbc.twist.material_models import *
 from sys import argv
 
 
-
 class LinearPull(StaticHyperelasticity):
     """ DEMO - Hyperelastic cube is stretched/compressed by a traction acting
     on one side """

@@ -46,8 +46,8 @@ class PeriodicBoundary(SubDomain):
             y[0] = x[0]
             y[1] = x[1] - y_len
         else:
-            y[0] = 1e4
-            x[0] = 1e4
+            y[0] = 1e40
+            x[0] = 1e40
 
 
 class LinearHomogenization(StaticHyperelasticity):
@@ -73,6 +73,10 @@ class LinearHomogenization(StaticHyperelasticity):
     def A(self, elasticity_tensor):
         self._A = elasticity_tensor
 
+    def periodic_boundaries(self):
+        return PeriodicBoundary(self.mesh()) if self.mesh() is not None \
+            else None
+
     def material_model(self):
         self._material = LinearGeneral({'A': self.A})
         return self._material
@@ -88,22 +92,11 @@ class LinearHomogenization(StaticHyperelasticity):
             self.indxs = (i, j)
             self._correctors_chi[(i, j)] = StaticHyperelasticity.solve(self)
         return self._correctors_chi
-    #
-    # def elasticity_tensor(self):
-    #     """Return the elasticity (tangent) tensor.
-    #        IMPLEMENTED BY A USER"""
-    #     pass
-    #
-    # def periodic_boundaries(self):
-    #     """Return the periodic boundary conditions.
-    #        IMPLEMENTED BY A USER"""
-    #     pass
 
     def body_force_div(self):
         (m, n) = self.indxs
         A_mn = homogenization_rhs(self.A, m, n)
         return A_mn
-
 
     def volume(self):
         """

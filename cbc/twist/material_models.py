@@ -97,9 +97,11 @@ class neoHookean(MaterialModel):
         # return half_nkT*(I1bar - 3.0)
 
         J = fenics.sqrt(fenics.det(self.C))
-        Cbar = J ** (-2.0 / 3.0) * self.C
+        # Cbar = J ** (-2.0 / 3.0) * self.C
         half_nkT, bulk = parameters['half_nkT'], parameters['bulk']
-        return half_nkT * (fenics.tr(Cbar) - 3.0) + bulk * (J - 1.0) ** 2
+        # return half_nkT * (fenics.tr(Cbar) - 3.0) + bulk * (J - 1.0) ** 2
+        return half_nkT * (fenics.tr(self.C) - 3.0 - 2 * fenics.ln(J)) \
+               + bulk * (fenics.ln(J)) ** 2
 
 
 class Isihara(MaterialModel):
