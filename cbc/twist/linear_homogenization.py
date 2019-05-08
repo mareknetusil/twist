@@ -10,11 +10,13 @@ from cbc.twist.equation_terms import elasticity_displacement, homogenization_rhs
     linear_pk_stress
 from cbc.twist.material_models import LinearGeneral
 import itertools
+import copy
 
 
 class PeriodicBoundary(SubDomain):
     def __init__(self, mesh):
         SubDomain.__init__(self)
+        self.dim = mesh.geometry().dim()
         coors = mesh.coordinates()
         x_list = coors[:, 0]
         y_list = coors[:, 1]
@@ -22,32 +24,75 @@ class PeriodicBoundary(SubDomain):
         self.x_max = max(x_list)
         self.y_min = min(y_list)
         self.y_max = max(y_list)
-        # self.x_min = 0.0
-        # self.x_max = 1.0
-        # self.y_min = 0.0
-        # self.y_max = 1.0
+
+        if self.dim == 3:
+            z_list = coors[:, 2]
+            self.z_min = min(z_list)
+            self.z_max = max(z_list)
 
     def inside(self, x, on_boundary):
-        return bool((near(x[0], self.x_min) or near(x[1], self.y_min)) and
-                    (not ((near(x[0], self.x_max) and near(x[1], self.y_min)) or
-                          (near(x[0], self.x_max) and near(x[1], self.y_max))))
-                    and on_boundary)
+        if self.dim == 2:
+            return bool((near(x[0], self.x_min) or near(x[1], self.y_min))
+                        # and
+                        # (not ((near(x[0], self.x_max) and near(x[1], self.y_min)) or
+                        #       (near(x[0], self.x_min) and near(x[1], self.y_max))))
+                        and on_boundary)
+        elif self.dim == 3:
+            return bool((near(x[0], self.x_min) or near(x[1], self.y_min) or
+                         near(x[2], self.z_min)) and on_boundary)
 
     def map(self, x, y):
-        x_len = self.x_max - self.x_min
-        y_len = self.y_max - self.y_min
-        if near(x[0], self.x_max) and near(x[1], self.y_max):
-            y[0] = x[0] - x_len
-            y[1] = x[1] - y_len
-        elif near(x[0], self.x_max):
-            y[0] = x[0] - x_len
-            y[1] = x[1]
-        elif near(x[1], self.y_max):
-            y[0] = x[0]
-            y[1] = x[1] - y_len
-        else:
-            y[0] = 1e40
-            x[0] = 1e40
+        if self.dim == 2:
+            x_len = self.x_max - self.x_min
+            y_len = self.y_max - self.y_min
+            if near(x[0], self.x_max) and near(x[1], self.y_max):
+                y[0] = x[0] - x_len
+                y[1] = x[1] - y_len
+            elif near(x[0], self.x_max):
+                y[0] = x[0] - x_len
+                y[1] = x[1]
+            elif near(x[1], self.y_max):
+                y[0] = x[0]
+                y[1] = x[1] - y_len
+            else:
+                y[0] = 1e40
+                y[1] = 1e40
+        elif self.dim == 3:
+            x_len = self.x_max - self.x_min
+            y_len = self.y_max - self.y_min
+            z_len = self.z_max - self.z_min
+            if near(x[0], self.x_max) and near(x[1], self.y_max) and near(x[2], self.y_max):
+                y[0] = x[0] - x_len
+                y[1] = x[1] - y_len
+                y[2] = x[2] - z_len
+            elif near(x[0], self.x_max) and near(x[1], self.y_max):
+                y[0] = x[0] - x_len
+                y[1] = x[1] - y_len
+                y[2] = x[2]
+            elif near(x[0], self.x_max) and near(x[2], self.z_max):
+                y[0] = x[0] - x_len
+                y[1] = x[1]
+                y[2] = x[2] - z_len
+            elif near(x[1], self.y_max) and near(x[2], self.z_max):
+                y[0] = x[0]
+                y[1] = x[1] - y_len
+                y[2] = x[2] - z_len
+            elif near(x[0], self.x_max):
+                y[0] = x[0] - x_len
+                y[1] = x[1]
+                y[2] = x[2]
+            elif near(x[1], self.y_max):
+                y[0] = x[0]
+                y[1] = x[1] - y_len
+                y[2] = x[2]
+            elif near(x[2], self.z_max):
+                y[0] = x[0]
+                y[1] = x[1]
+                y[2] = x[2] - z_len
+            else:
+                y[0] = 1e40
+                y[1] = 1e40
+                y[2] = 1e40
 
 
 class LinearHomogenization(StaticHyperelasticity):
@@ -90,7 +135,10 @@ class LinearHomogenization(StaticHyperelasticity):
         # self.solver = LinearHomogenizationSolver(self, self.parameters)
         for (i, j) in itertools.product(range(self.dim), range(self.dim)):
             self.indxs = (i, j)
-            self._correctors_chi[(i, j)] = StaticHyperelasticity.solve(self)
+            # self._correctors_chi[(i, j)] = StaticHyperelasticity.solve(self)
+            chi = StaticHyperelasticity.solve(self)
+            chi.rename('chi_({},{})'.format(i, j), 'corrector')
+            self._correctors_chi[(i, j)] = chi
         return self._correctors_chi
 
     def body_force_div(self):
@@ -135,12 +183,13 @@ class LinearHomogenization(StaticHyperelasticity):
         """
         A_av = {}
         V = FunctionSpace(self._mesh, 'CG', 1)
-        for (i,j,k,l) in itertools.product(range(2), range(2), range(2), range(2)):
+        for (i,j,k,l) in itertools.product(range(self.dim), range(self.dim),
+                                           range(self.dim), range(self.dim)):
             A_ijkl = project(self.A[i,j,k,l], V)
             A_av[(i,j,k,l)] = assemble(A_ijkl*dx)/self.volume()
 
-        B = [[[[A_av[(i,j,k,l)] for l in range(2)] for k in range(2)]
-              for j in range(2)] for i in range(2)]
+        B = [[[[A_av[(i,j,k,l)] for l in range(self.dim)] for k in range(self.dim)]
+              for j in range(self.dim)] for i in range(self.dim)]
         return as_tensor(B)
 
     def corrector_elasticity_tensor(self):
@@ -150,14 +199,18 @@ class LinearHomogenization(StaticHyperelasticity):
         # A = self.elasticity_tensor()
         A_corr = {}
         V = FunctionSpace(self._mesh, 'CG', 1)
-        for (i,j,k,l) in itertools.product(range(2), range(2), range(2), range(2)):
+        for (i,j,k,l) in itertools.product(range(self.dim), range(self.dim),
+                                           range(self.dim), range(self.dim)):
             m, n = indices(2)
             chi_kl = self.correctors_chi((k,l))
             P_ijkl = as_tensor(self.A[i,j,m,n]*grad(chi_kl)[m,n])
             A_corr[(i,j,k,l)] = assemble(P_ijkl*dx)/self.volume()
 
-        B = [[[[A_corr[(i,j,k,l)] for l in range(2)] for k in range(2)]
-              for j in range(2)] for i in range(2)]
+        B = [[[[A_corr[(i,j,k,l)]
+                for l in range(self.dim)]
+               for k in range(self.dim)]
+              for j in range(self.dim)]
+             for i in range(self.dim)]
         return as_tensor(B)
 
     def homogenized_elasticity_tensor(self):
@@ -166,9 +219,12 @@ class LinearHomogenization(StaticHyperelasticity):
         """
         A_av = self.averaged_elasticity_tensor()
         A_corr = self.corrector_elasticity_tensor()
-        i,j,k,l = indices(4)
-        A0 = [[[[A_av[i,j,k,l] - A_corr[i,j,k,l] for l in range(2)] for k in range(2)]
-                for j in range(2)] for i in range(2)]
+        # i,j,k,l = indices(4)
+        A0 = [[[[A_av[i,j,k,l] - A_corr[i,j,k,l]
+                 for l in range(self.dim)]
+                for k in range(self.dim)]
+               for j in range(self.dim)]
+              for i in range(self.dim)]
         return as_tensor(A0)
 
     @staticmethod
@@ -183,10 +239,11 @@ class LinearHomogenization(StaticHyperelasticity):
 
     def displacement_correction(self, u_0):
         """Return u_1"""
-        Chi_mn = [[self.correctors_chi((m,n)) for n in range(2)] for m in range(2)]
+        Chi_mn = [[self.correctors_chi((m,n)) for n in range(self.dim)]
+                  for m in range(self.dim)]
         Chi = as_tensor(Chi_mn)
         m, n = indices(2)
-        u_1 = as_vector([- Chi[m,n,i]*grad(u_0)[m, n] for i in range(2)])
+        u_1 = as_vector([- Chi[m,n,i]*grad(u_0)[m, n] for i in range(self.dim)])
 
         V = VectorFunctionSpace(self.mesh(), 'CG', 1)
         u_1_fce = project(u_1, V)
