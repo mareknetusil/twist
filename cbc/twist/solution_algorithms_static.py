@@ -52,7 +52,7 @@ class StaticMomentumBalanceSolver_U(CBCSolver):
         vector.create_dirichlet_conditions(problem)
 
         # Print DOFs
-        print("Number of DOFs = %d" % vector.space.dim())
+        info("Number of DOFs = %d" % vector.space.dim())
 
         # Driving forces
         # B = problem.body_force()

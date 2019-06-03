@@ -6,9 +6,8 @@ import itertools
 
 
 class LinearMicroProblem(LinearHomogenization):
-    def __init__(self, dim=2):
+    def __init__(self, dim=2, n=10):
         LinearHomogenization.__init__(self)
-        n = 8
         self._mesh = UnitSquareMesh(n, n) if dim == 2 else UnitCubeMesh(n, n, n)
 
         lmbda = 1e4
@@ -18,11 +17,11 @@ class LinearMicroProblem(LinearHomogenization):
                                   self._mesh.topology().dim())
         subdomains.set_all(0)
         self.subdomains = subdomains
-        # inclusion = AutoSubDomain(lambda x: pow(x[0] - 0.5, 2) +
-        #                                 pow(x[1] - 0.5, 2) < 0.04)
-        # inclusion.mark(subdomains, 1)
-        right = AutoSubDomain(lambda x: x[1] < 0.5)
-        right.mark(subdomains, 1)
+        inclusion = AutoSubDomain(lambda x: pow(x[0] - 0.5, 2) +
+                                        pow(x[1] - 0.5, 2) < 0.04)
+        inclusion.mark(subdomains, 1)
+        #right = AutoSubDomain(lambda x: x[1] < 0.5)
+        #right.mark(subdomains, 1)
 
         # refactorize this into separate function
         mu_f = function_from_cell_function(mu, subdomains)

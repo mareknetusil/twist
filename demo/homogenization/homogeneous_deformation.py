@@ -6,6 +6,14 @@ import itertools as it
 import numpy as np
 from linear_microproblem import LinearMicroProblem
 
+parameters['std_out_all_processes'] = False
+
+N = 4       # num of time-steps
+dF = 1.0   # load increment
+
+dim = 3
+n = 20
+
 class SolutionExpression():
     def __init__(self, dim=2):
         self.dim = dim
@@ -55,10 +63,7 @@ def stress_avg_vector(P, dim=2):
     return np.array([assemble(P[i,j]*dx) for (i,j) in it.product(range(dim), range(dim))])
 
 
-
-dim = 3
-
-linHom = LinearMicroProblem(dim=dim)
+linHom = LinearMicroProblem(dim=dim, n=n)
 linHom.parameters["plot_solution"] = False
 linHom.parameters["save_solution"] = False
 
@@ -74,10 +79,7 @@ P = linHom.nonlin_mat.first_pk_stress(u0)
 uFile = File(output_dir + "u.pvd")
 PFile = File(output_dir + "P.pvd")
 for (i, j) in it.product(range(dim), range(dim)):
-    chiFile = XDMFFile(output_dir + "chi_({},{}).xdmf".format(i, j))
-
-N = 4       # num of time-steps
-dF = 10.0   # load increment
+    chiFile = File(output_dir + "chi_({},{}).pvd".format(i, j))
 
 # Computation
 info('===== START =====')
@@ -99,8 +101,8 @@ for n in range(N):
 
         A = linHom.homogenized_elasticity_tensor()
 
-        for (i, j) in it.product(range(dim), range(dim)):
-            chiFile.write(linHom.correctors_chi((i,j)), n)
+        #for (i, j) in it.product(range(dim), range(dim)):
+        #    chiFile.write(linHom.correctors_chi((i,j)), n)
 
         A_mat = elasticity_tensor_to_matrix(A, dim)
         P_rhs = stress_avg_vector(P, dim)
@@ -118,8 +120,8 @@ for n in range(N):
         P_fce = project(P, T)
 
         #inc_norm = assemble(inner(u_inc, u_inc)*dx)
-        inc_norm = np.linalg.norm(G)
-        print('|G| = {}'.format(inc_norm))
+        inc_norm = np.linalg.norm(G, ord=np.inf)
+        info('|G| = {}'.format(inc_norm))
         if inc_norm < 1e-6:
             break
 
